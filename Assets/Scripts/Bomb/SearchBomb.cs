@@ -36,7 +36,7 @@ public sealed class SearchBomb : MonoBehaviour
         if (!IsValidTarget(collider))
             return false;
         Vector2Int origin = GetCell(bomb.GetLogicalPosition(), tileSize);
-        Vector2Int goal = GetCell(candidate.position, tileSize);
+        Vector2Int goal = GetTargetCell(collider, origin, tileSize);
         if (!IsWithinDetectionRange(origin, goal))
             return false;
         if (target != null)
@@ -81,13 +81,13 @@ public sealed class SearchBomb : MonoBehaviour
         Vector2Int origin = GetCell(transform.position, tileSize);
         if (target != null)
         {
-            Vector2Int currentTargetCell = GetCell(target.transform.position, tileSize);
+            Vector2Int currentTargetCell = GetTargetCell(target, origin, tileSize);
             if (!IsValidTarget(target) || !IsWithinDetectionRange(origin, currentTargetCell))
             {
                 target = null;
                 targetTrail.Clear();
             }
-            else
+            else if (!IsBossTarget(target))
                 RecordTargetTile(currentTargetCell);
         }
         if (bomb.IsBeingMagnetPulled || !bomb.CanBeMagnetPulled)
@@ -112,12 +112,17 @@ public sealed class SearchBomb : MonoBehaviour
             target = FindTarget(origin, tileSize);
             if (target != null)
             {
-                lastTargetCell = GetCell(target.transform.position, tileSize);
+                lastTargetCell = GetTargetCell(target, origin, tileSize);
                 SeedTargetTrail(origin, lastTargetCell, tileSize);
             }
         }
         if (target == null)
             return;
+
+        // Large boss hitboxes can cover several tiles and move diagonally.
+        // Rebuild the approach to their nearest edge instead of following their pivot trail.
+        if (IsBossTarget(target))
+            SeedTargetTrail(origin, GetTargetCell(target, origin, tileSize), tileSize);
 
         while (targetTrail.Count > 0 && targetTrail.Peek() == origin)
             targetTrail.Dequeue();
@@ -193,7 +198,7 @@ public sealed class SearchBomb : MonoBehaviour
         foreach (Collider2D hit in hits)
         {
             bool valid = IsValidTarget(hit);
-            Vector2Int cell = GetCell(hit.transform.position, tileSize);
+            Vector2Int cell = GetTargetCell(hit, origin, tileSize);
             int distance = Mathf.Abs(cell.x - origin.x) + Mathf.Abs(cell.y - origin.y);
             bool inRange = IsWithinDetectionRange(origin, cell);
             bool hasRoute = valid && inRange && TryFindDirection(origin, cell, tileSize, out _);
@@ -203,6 +208,19 @@ public sealed class SearchBomb : MonoBehaviour
             bestDistance = distance;
         }
         return nearest;
+    }
+
+    private static bool IsBossTarget(Collider2D candidate) =>
+        candidate.GetComponentInParent<FreezerVenusBoss>() != null ||
+        candidate.GetComponentInParent<SunMaskBoss>() != null ||
+        candidate.GetComponentInParent<ClownMaskBoss>() != null;
+
+    private static Vector2Int GetTargetCell(Collider2D candidate, Vector2Int origin, float tileSize)
+    {
+        Vector2 position = IsBossTarget(candidate)
+            ? candidate.ClosestPoint((Vector2)origin * tileSize)
+            : (Vector2)candidate.transform.position;
+        return GetCell(position, tileSize);
     }
 
     private bool IsValidTarget(Collider2D candidate)
