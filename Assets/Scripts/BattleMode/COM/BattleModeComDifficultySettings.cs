@@ -36,21 +36,22 @@ public sealed class BattleModeComDifficultySettings
         {
             case BattleModeComputerLevel.Easy:
                 difficulty = level;
-                decisionInterval = 0.28f;
+                // Slow ordinary play, but keep emergency reaction and escape searches intact.
+                decisionInterval = 0.36f;
                 dangerDecisionInterval = 0.1f;
                 searchDepth = 6;
                 dangerReactionSeconds = 0.22f;
                 safeTileMinimumSeconds = 0.28f;
-                hesitationChance = 0.06f;
+                hesitationChance = 0.08f;
                 escapeAbilityChance = 0.25f;
                 stageProgressPriorityChance = 1f;
-                postPlantActionChance = 0.75f;
+                postPlantActionChance = 0f;
                 advancedBombPlanChance = 0f;
                 stoppedWeight = 3;
-                patrolWeight = 12;
-                collectItemWeight = 42;
-                farmDestructibleWeight = 38;
-                combatPlantWeight = 24;
+                patrolWeight = 10;
+                collectItemWeight = 38;
+                farmDestructibleWeight = 34;
+                combatPlantWeight = 16;
                 break;
 
             case BattleModeComputerLevel.Hard:

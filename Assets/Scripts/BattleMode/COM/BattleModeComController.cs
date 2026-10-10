@@ -85,7 +85,7 @@ public sealed class BattleModeComController : MonoBehaviour
     private const float KickBombRiskLogIntervalSeconds = 0.25f;
 
     private const float BombTapCooldownSeconds = 0.35f;
-    private const float EasyMaxNoBombPlantIntervalSeconds = 2.5f;
+    private const float EasyMaxNoBombPlantIntervalSeconds = 5f;
     private const float ActionATapCooldownSeconds = 0.08f;
     private const float ControlBombTapCooldownSeconds = 0.35f;
     private const float PunchTapCooldownSeconds = 0.15f;
@@ -1442,6 +1442,15 @@ public sealed class BattleModeComController : MonoBehaviour
         lastWeightedTotal = -1;
         EnsurePersonalitySeed();
         UpdateRecentItemPickupMemory(settings, myTile, currentDangerSeconds);
+
+        // Easy keeps its previous movement until it notices an opponent's fuse.
+        // Gate every emergency planner, not only special escape abilities.
+        if (ShouldDelayEnemyBombEscape(settings, myTile, currentDangerSeconds))
+        {
+            currentHoldActionA = false;
+            currentReason = "easy has not noticed enemy bomb yet";
+            return;
+        }
 
         // Search bombs move after the normal danger snapshot. Replan before
         // continuing static escape routes or committing to an offensive action.
@@ -4291,7 +4300,9 @@ public sealed class BattleModeComController : MonoBehaviour
             return true;
         }
 
-        if (targetDistance <= settings.searchDepth + radius + 2 &&
+        // Easy only approaches nearby opponents instead of hunting across the arena.
+        if ((settings.difficulty != BattleModeComputerLevel.Easy || targetDistance <= 4) &&
+            targetDistance <= settings.searchDepth + radius + 2 &&
             TryFindPath(myTile, targetTile, settings.searchDepth + 3, true, settings, null, out PathResult path) &&
             path.Distance > 0)
         {
@@ -10752,6 +10763,56 @@ public sealed class BattleModeComController : MonoBehaviour
     private bool BlocksExplosionForPierce(Vector2Int tile)
     {
         return BlocksExplosionAtIndestructible(tile) || IsBombAtTile(tile);
+    }
+
+    private bool ShouldDelayEnemyBombEscape(
+        BattleModeComDifficultySettings settings, Vector2Int tile, float dangerSeconds)
+    {
+        if (settings.difficulty != BattleModeComputerLevel.Easy ||
+            HasOwnUnresolvedBombOrExplosion() || float.IsInfinity(dangerSeconds))
+            return false;
+
+        Bomb threat = null;
+        float fuseSeconds = float.PositiveInfinity;
+        foreach (Bomb bomb in Bomb.ActiveBombs)
+        {
+            if (bomb == null || bomb.HasExploded || bomb.IsBeingHeldByPowerGlove)
+                continue;
+
+            int radius = bomb.Owner != null ? Mathf.Max(1, bomb.Owner.GetPredictedBlastRadius(bomb)) : 2;
+            if (!IsBombBlastReachingTile(bomb, WorldToTile(bomb.GetLogicalPosition()), tile, radius))
+                continue;
+
+            // Own bombs and remote detonation must retain immediate safety handling.
+            if (bomb.Owner == bombController || bomb.IsControlBomb)
+                return false;
+
+            if (bomb.RemainingFuseSeconds < fuseSeconds)
+            {
+                threat = bomb;
+                fuseSeconds = bomb.RemainingFuseSeconds;
+            }
+        }
+
+        if (threat == null)
+            return false;
+
+        // Stable per player/bomb: repeated Think calls cannot reroll a quicker response.
+        float variation = (HashToSignedUnit(personalitySeed, threat.GetEntityId().GetHashCode()) + 1f) * 0.5f;
+        float noticeSeconds = Mathf.Lerp(0.25f, 0.75f, variation);
+        return ShouldDelayEasyBombEscape(settings.difficulty, false,
+            dangerSeconds, fuseSeconds, noticeSeconds);
+    }
+
+    internal static bool ShouldDelayEasyBombEscape(
+        BattleModeComputerLevel level, bool hasOwnDanger,
+        float dangerSeconds, float enemyFuseSeconds, float noticeSeconds)
+    {
+        // An earlier hazard (active explosion, stage trap, chain reaction, tank shot)
+        // bypasses delayed bomb awareness. Never delay the reaction to actual damage.
+        return level == BattleModeComputerLevel.Easy && !hasOwnDanger &&
+               !float.IsInfinity(enemyFuseSeconds) && dangerSeconds > noticeSeconds &&
+               Mathf.Abs(dangerSeconds - enemyFuseSeconds) < 0.01f;
     }
 
     private string ResolveEscapeAbilityThreatKey(Vector2Int tile)

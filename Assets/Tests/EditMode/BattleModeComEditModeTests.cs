@@ -839,7 +839,7 @@ public sealed class BattleModeComEditModeTests
         Assert.AreEqual("farm", frame.ExpensiveCalls[2].Operation);
     }
 
-    [TestCase(BattleModeComputerLevel.Easy, 0.28f, 0.1f, 6)]
+    [TestCase(BattleModeComputerLevel.Easy, 0.36f, 0.1f, 6)]
     [TestCase(BattleModeComputerLevel.Normal, 0.22f, 0.06f, 9)]
     [TestCase(BattleModeComputerLevel.Hard, 0.14f, 0.035f, 12)]
     public void DifficultyReset_RestoresEveryFieldWithoutMutatingOtherPlayers(
@@ -867,6 +867,68 @@ public sealed class BattleModeComEditModeTests
         Assert.AreEqual(decisionInterval, playerOne.decisionInterval);
         Assert.AreEqual(dangerInterval, playerOne.dangerDecisionInterval);
         Assert.AreEqual(searchDepth, playerOne.searchDepth);
+    }
+
+    [TestCase(BattleModeComputerLevel.Easy, false, 2f, 2f, true)]
+    [TestCase(BattleModeComputerLevel.Easy, false, 0.5f, 0.5f, false)]
+    [TestCase(BattleModeComputerLevel.Easy, false, 0.3f, 0.3f, false)]
+    [TestCase(BattleModeComputerLevel.Easy, false, 0f, 2f, false)]
+    [TestCase(BattleModeComputerLevel.Easy, false, 0.8f, 2f, false)]
+    [TestCase(BattleModeComputerLevel.Easy, true, 2f, 2f, false)]
+    [TestCase(BattleModeComputerLevel.Normal, false, 2f, 2f, false)]
+    [TestCase(BattleModeComputerLevel.Hard, false, 2f, 2f, false)]
+    [TestCase(BattleModeComputerLevel.Easy, false, float.PositiveInfinity, float.PositiveInfinity, false)]
+    public void EasyBombAwareness_DelaysEnemyFuseButPreservesOwnAndImmediateDanger(
+        BattleModeComputerLevel level, bool ownDanger, float dangerSeconds, float fuseSeconds, bool expected)
+    {
+        Assert.AreEqual(expected, BattleModeComController.ShouldDelayEasyBombEscape(
+            level, ownDanger, dangerSeconds, fuseSeconds, 0.5f));
+    }
+
+    [Test]
+    public void EasyBombAwareness_LiveThreatKeepsMovementAndProtectsOwnBombs()
+    {
+        var player = new GameObject("Easy awareness player", typeof(CircleCollider2D));
+        player.SetActive(false);
+        var bombObject = new GameObject("Easy awareness enemy bomb");
+        bombObject.SetActive(false);
+        bombObject.AddComponent<CircleCollider2D>();
+        var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+        try
+        {
+            player.transform.position = new Vector2(1000.5f, 1000.5f);
+            var owner = player.AddComponent<BombController>();
+            var controller = player.AddComponent<BattleModeComController>();
+            typeof(BattleModeComController).GetField("bombController", flags).SetValue(controller, owner);
+            var bomb = bombObject.AddComponent<Bomb>();
+            typeof(Bomb).GetField("lastPos", flags).SetValue(bomb, new Vector2(1001.5f, 1000.5f));
+            typeof(Bomb).GetProperty("PlacedTime").SetValue(bomb, Time.time);
+            bomb.FuseSeconds = 2f;
+            Bomb.ActiveBombs.Add(bomb);
+            var settings = BattleModeComDifficultySettings.For(BattleModeComputerLevel.Easy);
+            var delay = typeof(BattleModeComController).GetMethod("ShouldDelayEnemyBombEscape", flags);
+            object[] args = { settings, new Vector2Int(1000, 1000), bomb.RemainingFuseSeconds };
+            Assert.IsTrue((bool)delay.Invoke(controller, args));
+            Assert.IsTrue((bool)delay.Invoke(controller, args), "Repeated evaluations keep the same response.");
+
+            typeof(BattleModeComController).GetField("currentMoveInput", flags).SetValue(controller, Vector2.right);
+            typeof(BattleModeComController).GetField("currentHoldActionA", flags).SetValue(controller, true);
+            typeof(BattleModeComController).GetMethod("Think", flags).Invoke(controller,
+                new object[] { settings, new Vector2Int(1000, 1000), bomb.RemainingFuseSeconds, true });
+            Assert.AreEqual(Vector2.right, typeof(BattleModeComController).GetField("currentMoveInput", flags).GetValue(controller));
+            Assert.AreEqual(false, typeof(BattleModeComController).GetField("currentHoldActionA", flags).GetValue(controller));
+
+            bomb.IsControlBomb = true;
+            Assert.IsFalse((bool)delay.Invoke(controller, args));
+            bomb.IsControlBomb = false;
+            typeof(Bomb).GetField("owner", flags).SetValue(bomb, owner);
+            Assert.IsFalse((bool)delay.Invoke(controller, args), "Own-bomb escape stays immediate.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(bombObject);
+            Object.DestroyImmediate(player);
+        }
     }
 
     [Test]
