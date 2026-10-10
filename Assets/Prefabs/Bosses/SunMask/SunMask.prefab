@@ -35,7 +35,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &6425904371498426590
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -92,6 +92,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &1490912394707210437
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -111,9 +112,12 @@ MonoBehaviour:
   animationTime: 0.25
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
@@ -194,7 +198,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &5582354616349234452
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -251,6 +255,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &4805962053910652688
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -270,9 +275,12 @@ MonoBehaviour:
   animationTime: 0.25
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
@@ -313,7 +321,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &5927366543447705774
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -370,6 +378,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &2515805762123387750
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -389,9 +398,12 @@ MonoBehaviour:
   animationTime: 0.1
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
@@ -432,7 +444,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &5267648311326212769
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -489,6 +501,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &7319768232159448238
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -508,9 +521,12 @@ MonoBehaviour:
   animationTime: 0.25
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
@@ -551,7 +567,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &5567364472086012430
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -608,6 +624,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &1239999045062863431
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -627,9 +644,12 @@ MonoBehaviour:
   animationTime: 0.25
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
@@ -670,7 +690,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &8966136525118118659
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -727,6 +747,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &6253870969018581193
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -746,9 +767,12 @@ MonoBehaviour:
   animationTime: 0.25
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
@@ -789,7 +813,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &3743467321343043018
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -846,6 +870,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &3444043583768103670
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -865,9 +890,12 @@ MonoBehaviour:
   animationTime: 0.25
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
@@ -908,7 +936,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &3959945924749233709
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -965,6 +993,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &209237640579710390
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -984,9 +1013,12 @@ MonoBehaviour:
   animationTime: 0.25
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
@@ -1130,6 +1162,11 @@ MonoBehaviour:
   angryArcSeconds: 1
   angryArcRadius: 1.25
   angryArcClockwise: 1
+  angryChaseSpeedMultiplier: 0.75
+  angryChaseCloseSlowDistance: 7
+  angryChaseCloseSpeedMultiplier: 0.55
+  angryChaseMinimumSpeed: 1.5
+  angryChaseCloseTurnSpeedMultiplier: 0.35
   angryRetargetInterval: 0.08
   angryTurnSpeedDegrees: 220
   enableWinkAttack: 1
@@ -1185,7 +1222,7 @@ MonoBehaviour:
   explosionSpawnRadius: 3
   explosionMinScale: 0.7
   explosionMaxScale: 1.2
-  deathExplosionSfx: {fileID: 8300000, guid: 4b7848255d7d0b8409feb0a8c7ae8a00, type: 3}
+  deathExplosionSfx: {fileID: 8300000, guid: 2c07db970fc9c08428e4701a8c50277a, type: 3}
   deathExplosionSfxInterval: 0.25
   deathExplosionSfxVolume: 0.8
   deathExplosionPitchRange: {x: 0.95, y: 1.05}
@@ -1365,6 +1402,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BossEndStageSequence
   endStageMusic: {fileID: 8300000, guid: 2c3c7b7d0c168a14a844d32e484a0c28, type: 3}
+  completedStageSceneName: 
   playRandomGoodSfx: 1
   playSkullForNightmareBomber: 1
   skullVolume: 1
@@ -1446,7 +1484,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &3185898951401507212
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -1503,6 +1541,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &5084572211645712223
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1524,9 +1563,12 @@ MonoBehaviour:
   animationTime: 0.05
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
@@ -1567,7 +1609,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &1009507674816740618
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -1624,6 +1666,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &3970179353065859549
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1643,9 +1686,12 @@ MonoBehaviour:
   animationTime: 0.25
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
@@ -1686,7 +1732,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &9022874182820943746
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -1743,6 +1789,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &3598030341436078934
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1762,9 +1809,12 @@ MonoBehaviour:
   animationTime: 0.25
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
@@ -1805,7 +1855,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &8211803272259686602
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -1862,6 +1912,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &5554180369288328576
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1881,9 +1932,12 @@ MonoBehaviour:
   animationTime: 0.25
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
@@ -1924,7 +1978,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &7501870569134665988
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -1981,6 +2035,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &8340656520437061764
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2000,9 +2055,12 @@ MonoBehaviour:
   animationTime: 0.25
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
@@ -2043,7 +2101,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &7329202762361835387
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -2100,6 +2158,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &6861776706390127981
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2119,9 +2178,12 @@ MonoBehaviour:
   animationTime: 0.25
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
@@ -2162,7 +2224,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &3489518845443020804
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -2219,6 +2281,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &8668839672131171956
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2238,9 +2301,12 @@ MonoBehaviour:
   animationTime: 0.25
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
@@ -2281,7 +2347,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &5614424314523052716
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -2338,6 +2404,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &5292329079700839116
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2357,9 +2424,12 @@ MonoBehaviour:
   animationTime: 0.25
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
@@ -2400,7 +2470,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &1846494004017143712
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -2457,6 +2527,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &6499936496559388285
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2476,9 +2547,12 @@ MonoBehaviour:
   animationTime: 0.25
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
@@ -2519,7 +2593,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &7657031108546849939
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -2576,6 +2650,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &4857994538919174543
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2595,9 +2670,12 @@ MonoBehaviour:
   animationTime: 0.25
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
@@ -2638,7 +2716,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &4479207664864668844
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -2695,6 +2773,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &2707884763540703686
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2714,9 +2793,12 @@ MonoBehaviour:
   animationTime: 0.25
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
@@ -2757,7 +2839,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &3080790235569833913
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -2814,6 +2896,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &7890748186502193273
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2833,9 +2916,12 @@ MonoBehaviour:
   animationTime: 0.25
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
@@ -2876,7 +2962,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &4730694845335829846
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -2933,6 +3019,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &3420885592123634483
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2952,9 +3039,12 @@ MonoBehaviour:
   animationTime: 0.25
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
@@ -2995,7 +3085,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &1409724752677405515
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -3052,6 +3142,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &8333797381939505100
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3071,9 +3162,12 @@ MonoBehaviour:
   animationTime: 0.25
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
@@ -3114,7 +3208,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &4848010108673566317
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -3171,6 +3265,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &8763147381756617559
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3190,9 +3285,12 @@ MonoBehaviour:
   animationTime: 0.25
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
@@ -3233,7 +3331,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &3960779790158977698
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -3290,6 +3388,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &2766438426182122720
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3309,9 +3408,12 @@ MonoBehaviour:
   animationTime: 0.25
   useSequenceDuration: 0
   sequenceDuration: 0.5
+  frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
+  loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 1
   frameOffsets: []
   pingPong: 0
