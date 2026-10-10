@@ -256,15 +256,31 @@ public sealed class FreezerVenusIntro : MonoBehaviour
         int height = beamTexture.height;
         int rayLength = Mathf.RoundToInt((height - 1) * Mathf.Clamp01(progress * 3f));
         float expansion = Mathf.Clamp01((progress - 0.33f) / 0.67f);
+        // Project the cone's circular floor footprint as a pixel ellipse.
+        // Its rounded front edge and brighter rim distinguish it from a flat triangle.
+        const float baseRadiusY = 4f;
+        float baseRadiusX = Mathf.Max(1f, BeamWidth * 0.5f * expansion);
         for (int y = 0; y < height; y++)
         {
             int fromTip = height - 1 - y;
             float distance = fromTip / (float)(height - 1);
-            int halfWidth = Mathf.Max(1, Mathf.RoundToInt(Mathf.Lerp(1f, BeamWidth * 0.5f, distance) * expansion));
+            float coneDistance = Mathf.Clamp01(fromTip / (height - 1f - baseRadiusY));
+            int halfWidth = Mathf.Max(1, Mathf.RoundToInt(Mathf.Lerp(1f, baseRadiusX, coneDistance)));
             Color32 yellow = new(255, 232, 72, (byte)Mathf.RoundToInt(Mathf.Lerp(135f, 85f, distance)));
             for (int x = 0; x < BeamWidth; x++)
-                pixels[y * BeamWidth + x] = progress > 0f && fromTip <= rayLength &&
-                    x >= BeamWidth / 2 - halfWidth && x < BeamWidth / 2 + halfWidth ? yellow : new Color32(0, 0, 0, 0);
+            {
+                float ellipseX = (x + 0.5f - BeamWidth * 0.5f) / baseRadiusX;
+                float ellipseY = (y - baseRadiusY) / baseRadiusY;
+                float ellipseDistance = ellipseX * ellipseX + ellipseY * ellipseY;
+                bool insideBase = ellipseDistance <= 1f;
+                bool insideCone = y >= baseRadiusY &&
+                    x >= BeamWidth / 2 - halfWidth && x < BeamWidth / 2 + halfWidth;
+                bool visible = progress > 0f && fromTip <= rayLength && (insideCone || insideBase);
+                bool rim = insideBase && ellipseDistance >= 0.6f;
+                pixels[y * BeamWidth + x] = visible
+                    ? rim ? new Color32(255, 242, 128, 145) : yellow
+                    : new Color32(0, 0, 0, 0);
+            }
         }
         beamTexture.SetPixels32(pixels);
         beamTexture.Apply(false, false);

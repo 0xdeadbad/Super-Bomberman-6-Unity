@@ -72,6 +72,7 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
         hitbox = GetComponent<Collider2D>();
         audioSource = GetComponent<AudioSource>();
         health.life = 10;
+        ApplyCampaignDifficultyModifiers();
         health.hitInvulnerableDuration = 0.85f;
         health.SetExternalInvulnerability(true);
         health.Damaged += OnDamaged;
@@ -84,6 +85,20 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
         Arena = new FreezerVenusArena(FindAnyObjectByType<GameManager>());
         if (shadow != null) shadow.enabled = false;
         SetFrame(closedFrames, 0);
+    }
+
+    private void ApplyCampaignDifficultyModifiers()
+    {
+        if (BossRushSession.IsActive ||
+            !string.Equals(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name,
+                "Stage_World3Hall", System.StringComparison.Ordinal)) return;
+
+        var difficulty = SaveSystem.GetActiveNormalGameDifficulty();
+        if (difficulty != Assets.Scripts.SaveSystem.NormalGameDifficulty.Hard &&
+            difficulty != Assets.Scripts.SaveSystem.NormalGameDifficulty.Hardcore) return;
+
+        health.AddLife(2);
+        moveSpeed *= 1.5f;
     }
 
     public void BeginCombat()
