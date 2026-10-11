@@ -101,11 +101,13 @@ public static class QueenOyobeeAuthoring
                 sprites["Scepter3"], sprites["Scepter4"] };
             queen.shadowSprite = sprites["Shadow"];
             queen.scepterShakeSfx = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sounds/QueenOyobee ScepterShake.wav");
-            queen.scepterShakeSfxGain = 3f;
+            queen.scepterShakeSfxGain = 2f;
             queen.iceCreateSfx = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sounds/QueenOyobee IceCreate.wav");
-            queen.iceCreateSfxGain = 3f;
+            queen.iceCreateSfxGain = 2f;
             queen.iceThrowSfx = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sounds/QueenOyobee IceThrow.wav");
-            queen.iceThrowSfxGain = 3f;
+            queen.iceThrowSfxGain = 2f;
+            queen.crownThrowSfx = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sounds/QueenOyobee CrownThrow.wav");
+            queen.crownThrowSfxGain = 2f;
             queen.music = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sounds/QueenOyobee.mp3");
             PrefabUtility.SaveAsPrefabAsset(go, Prefab);
         }

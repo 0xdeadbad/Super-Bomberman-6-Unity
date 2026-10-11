@@ -16,11 +16,13 @@ public sealed class QueenOyobeeController : MonoBehaviour
     public Sprite[] scepterFrames;
     public Sprite shadowSprite;
     public AudioClip iceCreateSfx;
-    [Min(0f)] public float iceCreateSfxGain = 3f;
+    [Min(0f)] public float iceCreateSfxGain = 2f;
+    public AudioClip crownThrowSfx;
+    [Min(0f)] public float crownThrowSfxGain = 2f;
     public AudioClip iceThrowSfx;
-    [Min(0f)] public float iceThrowSfxGain = 3f;
+    [Min(0f)] public float iceThrowSfxGain = 2f;
     public AudioClip scepterShakeSfx;
-    [Min(0f)] public float scepterShakeSfxGain = 3f;
+    [Min(0f)] public float scepterShakeSfxGain = 2f;
     public AudioClip music;
     [Range(0f, 1f)] public float musicVolume = 0.4f;
     private FreezerVenusBoss boss;
@@ -117,6 +119,8 @@ public sealed class QueenOyobeeController : MonoBehaviour
             // Preserve the crown preparation: two vertical lifts.
             for (int repeat = 0; repeat < 2; repeat++)
             {
+                // Each lift starts at the beginning or midpoint of the preparation.
+                PlayScepterShakeSound();
                 for (int frame = 0; frame < 4; frame++)
                 {
                     if (scepter != null)
@@ -158,6 +162,7 @@ public sealed class QueenOyobeeController : MonoBehaviour
             boss.SetFrame(crownlessFrames, 0);
             var crown = QueenOyobeeProjectile.Create(this, true, 0, path, crownFlightSeconds);
             projectiles.Add(crown);
+            boss.PlayAttackSfx(crownThrowSfx, crownThrowSfxGain);
             while (crown != null) yield return null;
             if (telegraph != null) Destroy(telegraph);
             if (wornCrown != null) wornCrown.enabled = true;
@@ -181,11 +186,13 @@ public sealed class QueenOyobeeController : MonoBehaviour
         flipY = step == 4 || step == 9;
     }
 
+    private void PlayScepterShakeSound() => boss.PlayAttackSfx(scepterShakeSfx, scepterShakeSfxGain);
+
     private IEnumerator PlayIceScepterShake()
     {
         float elapsed = 0f;
         bool secondSoundPlayed = false;
-        boss.PlayAttackSfx(scepterShakeSfx, scepterShakeSfxGain);
+        PlayScepterShakeSound();
         // One clock keeps ten poses inside the original eight-frame preparation duration.
         while (elapsed < IceScepterSeconds)
         {
@@ -199,10 +206,10 @@ public sealed class QueenOyobeeController : MonoBehaviour
                 scepter.transform.localRotation = Quaternion.identity;
                 scepter.transform.localPosition = new Vector3(1.125f, 0.25f, 0f);
             }
-            // Step seven is the second consecutive horizontally flipped Scepter4.
-            if (step >= 7 && !secondSoundPlayed)
+            // Sound timing is shared by both attacks: start and halfway through.
+            if (elapsed >= IceScepterSeconds * 0.5f && !secondSoundPlayed)
             {
-                boss.PlayAttackSfx(scepterShakeSfx, scepterShakeSfxGain);
+                PlayScepterShakeSound();
                 secondSoundPlayed = true;
             }
             yield return null;
