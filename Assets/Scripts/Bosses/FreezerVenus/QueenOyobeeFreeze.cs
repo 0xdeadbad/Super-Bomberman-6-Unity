@@ -8,6 +8,7 @@ public sealed class QueenOyobeeFreeze : MonoBehaviour
     private StunReceiver stun;
     private MovementController movement;
     private CharacterHealth health;
+    private InactivityAnimation inactivity;
     private float remaining;
     private float protection;
     private bool tinted;
@@ -19,6 +20,7 @@ public sealed class QueenOyobeeFreeze : MonoBehaviour
         stun = GetComponent<StunReceiver>();
         movement = GetComponent<MovementController>();
         health = GetComponent<CharacterHealth>();
+        inactivity = GetComponent<InactivityAnimation>();
     }
 
     public bool TryFreeze(float seconds = 2f, bool force = false)
@@ -26,6 +28,9 @@ public sealed class QueenOyobeeFreeze : MonoBehaviour
         if (stun == null && force) stun = gameObject.AddComponent<StunReceiver>();
         if (stun == null || (!force && (!stun.CanReceiveStun || stun.IsStunned || protection > 0f))) return false;
         CaptureFrozenPose();
+        // Keep the visible emote in the ice snapshot, but do not save its active
+        // renderer in StunReceiver's restoration state.
+        if (inactivity != null) inactivity.CancelForExternalOverride();
         if (force) stun.ForceStun(seconds, preserveCurrentSprites: true);
         else stun.Stun(seconds, preserveCurrentSprites: true);
         remaining = seconds;
@@ -95,7 +100,11 @@ public sealed class QueenOyobeeFreeze : MonoBehaviour
 
     private void OnDamaged(int amount)
     {
-        // Explosions still own damage/death visuals while the player is frozen.
+        remaining = 0f;
+        protection = Mathf.Min(protection, 1.5f);
+        if (stun != null && stun.IsStunned) stun.CancelStun(restoreVisuals: true);
+        if (inactivity != null) inactivity.CancelForExternalOverride();
+        // Damage now owns the visuals and the player is immediately free to move.
         RestoreFrozenPose();
         ClearTint();
     }
