@@ -20,14 +20,12 @@ public sealed class LineBombAbility : MonoBehaviour, IPlayerAbility
         enabledAbility = false;
     }
 
-    // Called by BombController before normal ActionA placement, never in a second Update.
-    public bool TryUseOnExistingBomb()
+    public bool CanUseOnExistingBomb()
     {
         if (!enabledAbility)
             return false;
 
         var movement = GetComponent<MovementController>();
-        var bomb = GetComponent<BombController>();
         if (movement.isDead || movement.InputLocked || movement.IsEndingStage ||
             movement.IsRidingPlaying() || GamePauseController.IsPaused)
             return false;
@@ -38,12 +36,18 @@ public sealed class LineBombAbility : MonoBehaviour, IPlayerAbility
         origin.y = Mathf.Round(origin.y / movement.tileSize) * movement.tileSize;
         var hit = Physics2D.OverlapBox(origin, Vector2.one * (movement.tileSize * 0.6f),
             0f, LayerMask.GetMask("Bomb"));
-        if (hit == null || !hit.TryGetComponent<Bomb>(out _) ||
-            hit.GetComponent<BoilerCapturedBomb>() != null)
-        {
-            return false;
-        }
+        return hit != null && hit.TryGetComponent<Bomb>(out _) &&
+               hit.GetComponent<BoilerCapturedBomb>() == null;
+    }
 
+    // Called by BombController before normal ActionA placement, never in a second Update.
+    public bool TryUseOnExistingBomb()
+    {
+        if (!CanUseOnExistingBomb())
+            return false;
+
+        var movement = GetComponent<MovementController>();
+        var bomb = GetComponent<BombController>();
         Vector2 dir = movement.FacingDirection;
         if (dir == Vector2.zero) dir = Vector2.down;
         dir = Mathf.Abs(dir.x) >= Mathf.Abs(dir.y)

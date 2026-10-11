@@ -13,6 +13,7 @@ public class MobileControlsRoot : MonoBehaviour
     private MobileButton actionRButton;
     private Sprite placeBombSprite;
     private Sprite powerGloveSprite;
+    private Sprite lineBombSprite;
     private Sprite punchBombSprite;
     private Sprite louieAbilitySprite;
     private Sprite detonateControlBombSprite;
@@ -220,6 +221,7 @@ public class MobileControlsRoot : MonoBehaviour
 
         placeBombSprite = Resources.Load<Sprite>("UI/Place_Bomb");
         powerGloveSprite = Resources.Load<Sprite>("UI/Use_Power_Glove");
+        lineBombSprite = Resources.Load<Sprite>("UI/LineBomb");
         punchBombSprite = Resources.Load<Sprite>("UI/Use_Box_Glove");
         louieAbilitySprite = Resources.Load<Sprite>("UI/Louie_hability");
         detonateControlBombSprite = Resources.Load<Sprite>("UI/Acionate_Bomb");
@@ -251,12 +253,14 @@ public class MobileControlsRoot : MonoBehaviour
         var abilities = player.GetComponent<AbilitySystem>();
         var bombs = player.GetComponent<BombController>();
         var powerGlove = player.GetComponent<PowerGloveAbility>();
+        var lineBomb = player.GetComponent<LineBombAbility>();
         var companion = player.GetComponent<PlayerMountCompanion>();
 
         bool canStopKick = abilities != null && (abilities.IsEnabled(BombKickAbility.AbilityId) ||
             abilities.IsEnabled(YellowLouieKickAbility.AbilityId));
         actionRButton?.gameObject.SetActive(!SaveSystem.GetTouchControls().hideUnused || canStopKick);
         bool canUsePowerGlove = powerGlove != null && powerGlove.CanPickupBombAtCurrentPosition();
+        bool canUseLineBomb = lineBomb != null && lineBomb.CanUseOnExistingBomb();
         bool canUsePunch = abilities != null && abilities.IsEnabled(BombPunchAbility.AbilityId);
         bool canDetonateControlBomb = abilities != null &&
                                       abilities.IsEnabled(ControlBombAbility.AbilityId) &&
@@ -266,7 +270,7 @@ public class MobileControlsRoot : MonoBehaviour
         bool canDismount = isMounted && companion != null && companion.HasMountedLouie();
 
         SetContextIcons(
-            canUsePowerGlove ? powerGloveSprite : placeBombSprite,
+            canUsePowerGlove ? powerGloveSprite : canUseLineBomb ? lineBombSprite : placeBombSprite,
             canDetonateControlBomb ? detonateControlBombSprite : null,
             isMounted ? louieAbilitySprite : canUsePunch ? punchBombSprite : null);
         selectButton?.gameObject.SetActive(!SaveSystem.GetTouchControls().hideUnused || canDismount);
