@@ -25,7 +25,8 @@ namespace StageAssets
             new(0.68f, 0.84f, 1f, 0.80f)
         };
 
-        private readonly Flake[] flakes = new Flake[FlakeCount];
+        private Flake[] flakes = new Flake[FlakeCount];
+        private int flakeSizePixels = 1;
 
         private Camera targetCamera;
         private Sprite flakeSprite;
@@ -34,6 +35,17 @@ namespace StageAssets
         private int viewportWidthPixels;
         private int viewportHeightPixels;
         private bool initialized;
+
+        public void Configure(int count, int sizePixels)
+        {
+            count = Mathf.Max(1, count);
+            sizePixels = Mathf.Max(1, sizePixels);
+            if (flakes.Length == count && flakeSizePixels == sizePixels) return;
+            OnDisable();
+            flakes = new Flake[count];
+            flakeSizePixels = sizePixels;
+            InitializeIfPossible();
+        }
 
         private void Start()
         {
@@ -180,24 +192,26 @@ namespace StageAssets
         private void ApplyPosition(Flake flake)
         {
             int x = Mathf.FloorToInt(flake.xPixels);
-            float localX = (x + 0.5f - viewportWidthPixels * 0.5f) / pixelsPerUnit;
+            float localX = (x + flakeSizePixels * 0.5f - viewportWidthPixels * 0.5f) / pixelsPerUnit;
             int y = Mathf.FloorToInt(flake.yPixels);
-            float localY = (y + 0.5f - viewportHeightPixels * 0.5f) / pixelsPerUnit;
+            float localY = (y + flakeSizePixels * 0.5f - viewportHeightPixels * 0.5f) / pixelsPerUnit;
             flake.transform.localPosition = new Vector3(localX, localY, OverlayDistance);
         }
 
         private Sprite CreateFlakeSprite()
         {
-            flakeTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false)
+            flakeTexture = new Texture2D(flakeSizePixels, flakeSizePixels, TextureFormat.RGBA32, false)
             {
                 filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Clamp,
                 name = "Stage35SnowFlake"
             };
-            flakeTexture.SetPixel(0, 0, Color.white);
+            var pixels = new Color[flakeSizePixels * flakeSizePixels];
+            for (int i = 0; i < pixels.Length; i++) pixels[i] = Color.white;
+            flakeTexture.SetPixels(pixels);
             flakeTexture.Apply(false, true);
 
-            return Sprite.Create(flakeTexture, new Rect(0f, 0f, 1f, 1f), new Vector2(0.5f, 0.5f), pixelsPerUnit);
+            return Sprite.Create(flakeTexture, new Rect(0f, 0f, flakeSizePixels, flakeSizePixels), new Vector2(0.5f, 0.5f), pixelsPerUnit);
         }
 
         private sealed class Flake

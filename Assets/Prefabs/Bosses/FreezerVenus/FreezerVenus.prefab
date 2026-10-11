@@ -425,7 +425,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 984873c31e014a548a5ae2621e79fe94, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::QueenOyobeeController
   transformationSprite: {fileID: 21300000, guid: 4ded79367eb54a34cba69112705af75c, type: 3}
   idleFrames:
@@ -446,10 +446,24 @@ MonoBehaviour:
   snowFrames:
   - {fileID: -1489222087, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
   - {fileID: -1464033138, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  snowDestructionFrames:
+  - {fileID: 551598752, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  - {fileID: -916857185, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  - {fileID: 1329027639, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  - {fileID: -799487787, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
   scepterFrames:
   - {fileID: -2084333327, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
   - {fileID: -1868553770, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
   - {fileID: 764316575, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  - {fileID: -1956766507, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  - {fileID: 764316575, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  shadowSprite: {fileID: -765441394, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  iceCreateSfx: {fileID: 8300000, guid: 1f1f3ea2b12951443abb0efe0157f2be, type: 3}
+  iceCreateSfxGain: 3
+  iceThrowSfx: {fileID: 8300000, guid: 50248628c40b2b041af9e73c6fec720f, type: 3}
+  iceThrowSfxGain: 3
+  scepterShakeSfx: {fileID: 8300000, guid: 61e2ac17bdb24cf4cb082d61c35e7b67, type: 3}
+  scepterShakeSfxGain: 3
   music: {fileID: 8300000, guid: 2cff40ff245a18e4181fbb9a4823b8b9, type: 3}
   musicVolume: 0.5960299
 --- !u!1 &9050139662049210414

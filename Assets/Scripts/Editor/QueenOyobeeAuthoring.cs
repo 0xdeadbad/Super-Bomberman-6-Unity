@@ -43,10 +43,17 @@ public static class QueenOyobeeAuthoring
         factories.Init();
         var provider = factories.GetSpriteEditorDataProviderFromObject(importer);
         provider.InitSpriteEditorDataProvider();
-        var old = provider.GetSpriteRects().ToDictionary(r => r.name, r => r.spriteID);
+        var authoredRects = provider.GetSpriteRects().ToDictionary(r => r.name);
+        var old = authoredRects.ToDictionary(r => r.Key, r => r.Value.spriteID);
         var rects = new List<SpriteRect>();
         void Add(string name, int x, int top, int width, int height, float pivotY = 0.5f)
         {
+            // Preserve hand-authored cuts, pivots and identifiers on repeat configuration.
+            if (authoredRects.TryGetValue(name, out var authored))
+            {
+                rects.Add(authored);
+                return;
+            }
             rects.Add(new SpriteRect
             {
                 name = name, rect = new Rect(x, 442 - top - height, width, height),
@@ -64,8 +71,12 @@ public static class QueenOyobeeAuthoring
         }
         Add("Scepter0", 19, 120, 29, 71);
         Add("Scepter1", 51, 120, 29, 71);
-        Add("Scepter2", 118, 158, 66, 33);
+        Add("Scepter3", 83, 138, 30, 38);
+        Add("Scepter4", 118, 157, 66, 32);
+        Add("Shadow", 11, 192, 46, 16);
         Add("FreezeSparkle", 1, 406, 35, 35);
+        foreach (var authored in authoredRects.Values)
+            if (!rects.Any(r => r.name == authored.name)) rects.Add(authored);
         provider.SetSpriteRects(rects.ToArray());
         provider.GetDataProvider<ISpriteNameFileIdDataProvider>().SetNameFileIdPairs(
             rects.Select(r => new SpriteNameFileIdPair(r.name, r.spriteID)));
@@ -84,7 +95,17 @@ public static class QueenOyobeeAuthoring
             queen.crownlessFrames = Frames(sprites, "Crownless", 2);
             queen.crownFrames = Frames(sprites, "Crown", 3);
             queen.snowFrames = Frames(sprites, "Snow", 2);
-            queen.scepterFrames = Frames(sprites, "Scepter", 3);
+            queen.snowDestructionFrames = Enumerable.Range(2, 4).Select(i => sprites["Snow" + i]).ToArray();
+            queen.scepterFrames = new[] { sprites["Scepter0"], sprites["Scepter1"],
+                sprites.TryGetValue("Scepter2", out var legacyScepter) ? legacyScepter : null,
+                sprites["Scepter3"], sprites["Scepter4"] };
+            queen.shadowSprite = sprites["Shadow"];
+            queen.scepterShakeSfx = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sounds/QueenOyobee ScepterShake.wav");
+            queen.scepterShakeSfxGain = 3f;
+            queen.iceCreateSfx = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sounds/QueenOyobee IceCreate.wav");
+            queen.iceCreateSfxGain = 3f;
+            queen.iceThrowSfx = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sounds/QueenOyobee IceThrow.wav");
+            queen.iceThrowSfxGain = 3f;
             queen.music = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sounds/QueenOyobee.mp3");
             PrefabUtility.SaveAsPrefabAsset(go, Prefab);
         }

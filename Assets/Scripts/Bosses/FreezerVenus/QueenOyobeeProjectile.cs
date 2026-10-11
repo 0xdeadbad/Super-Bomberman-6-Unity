@@ -27,8 +27,12 @@ public sealed class QueenOyobeeProjectile : MonoBehaviour
     private float orbitAngle;
     private bool crown;
     private bool spent;
+    private float destructionElapsed;
+    public const float SnowDestructionSeconds = 0.5f;
     private readonly HashSet<int> hitPlayers = new();
     public const float OrbitSeconds = 0.45f;
+    public const float SnowOrbitRadius = 2.5f;
+    public const float PursuingSnowReleaseSpacing = 0.18f;
 
     public static QueenOyobeeProjectile Create(QueenOyobeeController owner, bool crown, int index, Vector2[] path = null, float flightSeconds = 0f)
     {
@@ -38,9 +42,10 @@ public sealed class QueenOyobeeProjectile : MonoBehaviour
         p.owner = owner;
         p.crown = crown;
         p.orbitAngle = index * 60f;
+        if (!crown) p.releaseDelay = index * PursuingSnowReleaseSpacing;
         float initialAngle = p.orbitAngle * Mathf.Deg2Rad;
         p.position = crown ? (Vector2)owner.CrownOrigin :
-            (Vector2)(owner.Boss.transform.position + Vector3.up * 0.5f) + new Vector2(Mathf.Cos(initialAngle), Mathf.Sin(initialAngle)) * 1.4f;
+            (Vector2)(owner.Boss.transform.position + Vector3.up * 0.5f) + new Vector2(Mathf.Cos(initialAngle), Mathf.Sin(initialAngle)) * SnowOrbitRadius;
         p.start = p.position;
         p.crownPath = path;
         p.crownFlightSeconds = flightSeconds > 0f ? flightSeconds : path != null ? CrownFlightSeconds(path) : 0.7f;
@@ -74,9 +79,16 @@ public sealed class QueenOyobeeProjectile : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (spent || GamePauseController.IsPaused) return;
+        if (GamePauseController.IsPaused) return;
         if (owner == null || !owner.Boss.CombatActive) { Destroy(gameObject); return; }
         float dt = Time.fixedDeltaTime;
+        if (spent)
+        {
+            destructionElapsed += dt;
+            if (destructionElapsed >= SnowDestructionSeconds) { Destroy(gameObject); return; }
+            SetDestructionFrame();
+            return;
+        }
         elapsed += dt;
         if (crown)
         {
@@ -93,7 +105,7 @@ public sealed class QueenOyobeeProjectile : MonoBehaviour
         else if (elapsed < OrbitSeconds + releaseDelay)
         {
             float angle = (orbitAngle + elapsed * 200f) * Mathf.Deg2Rad;
-            position = (Vector2)(owner.Boss.transform.position + Vector3.up * 0.5f) + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * 1.4f;
+            position = (Vector2)(owner.Boss.transform.position + Vector3.up * 0.5f) + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * SnowOrbitRadius;
         }
         else
         {
@@ -101,6 +113,7 @@ public sealed class QueenOyobeeProjectile : MonoBehaviour
             {
                 direction = target != null ? ((Vector2)target.transform.position - position).normalized : Vector2.down;
                 hitbox.enabled = true;
+                owner.PlayIceThrowOnce();
             }
             float flight = elapsed - OrbitSeconds - releaseDelay;
             if (groundSnow)
@@ -116,8 +129,7 @@ public sealed class QueenOyobeeProjectile : MonoBehaviour
                     }
                 }
                 else landedSeconds += dt;
-                if (landedSeconds > 7f) { Destroy(gameObject); return; }
-                if (landedSeconds > 6f) visual.color = new Color(1f, 1f, 1f, 7f - landedSeconds);
+                if (landedSeconds > 7f) { BeginSnowDestruction(); return; }
             }
             else
             {
@@ -133,7 +145,7 @@ public sealed class QueenOyobeeProjectile : MonoBehaviour
                 if (overFloor) enteredFloor = true;
                 // The boss floats above the top floor row: let those shots enter the arena first.
                 if (flight > 5f || (enteredFloor && !overFloor))
-                { Destroy(gameObject); return; }
+                { BeginSnowDestruction(); return; }
             }
             visual.sprite = owner.snowFrames[Mathf.FloorToInt(elapsed * 8f) % owner.snowFrames.Length];
         }
@@ -163,7 +175,7 @@ public sealed class QueenOyobeeProjectile : MonoBehaviour
         p.groundSpeed = 1.6f + index * 0.13f;
         p.orbitAngle += 30f;
         float angle = p.orbitAngle * Mathf.Deg2Rad;
-        p.position = (Vector2)(owner.Boss.transform.position + Vector3.up * 0.5f) + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * 1.4f;
+        p.position = (Vector2)(owner.Boss.transform.position + Vector3.up * 0.5f) + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * SnowOrbitRadius;
         p.rb.position = FreezerVenusArena.Snap(p.position);
         p.transform.position = p.rb.position;
         return p;
@@ -289,15 +301,30 @@ public sealed class QueenOyobeeProjectile : MonoBehaviour
             return;
         }
         var player = other.GetComponentInParent<MovementController>();
-        if (player == null || !player.CompareTag("Player") || player.isDead || player.IsEndingStage || player.InputLocked) return;
-        var health = player.GetComponent<CharacterHealth>();
-        if (player.explosionInvulnerable || (health != null && health.IsInvulnerable)) return;
-        if (TryFreezePlayer(player, 2f) && !groundSnow)
-        {
-            spent = true;
-            hitbox.enabled = false;
-            Destroy(gameObject);
-        }
+        if (player == null || !player.CompareTag("Player") || player.isDead || player.IsEndingStage) return;
+        if (!player.InputLocked) TryFreezePlayer(player, 2f);
+        // A collision consumes either snow type, even if this player resists freezing.
+        BeginSnowDestruction();
+    }
+
+    private void BeginSnowDestruction()
+    {
+        if (spent || crown) return;
+        spent = true;
+        destructionElapsed = 0f;
+        hitbox.enabled = false;
+        rb.position = FreezerVenusArena.Snap(position);
+        transform.position = rb.position;
+        visual.color = Color.white;
+        SetDestructionFrame();
+    }
+
+    private void SetDestructionFrame()
+    {
+        var frames = owner.snowDestructionFrames;
+        if (frames == null || frames.Length == 0) return;
+        int frame = Mathf.Min(frames.Length - 1, Mathf.FloorToInt(destructionElapsed * frames.Length / SnowDestructionSeconds));
+        visual.sprite = frames[frame];
     }
 }
 

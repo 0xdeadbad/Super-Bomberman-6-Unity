@@ -64,7 +64,8 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
     public bool CombatActive { get; private set; }
     public int Life => health != null ? health.life : 10;
     public FreezerVenusArena Arena { get; private set; }
-    public Vector3 GroundPosition => FreezerVenusArena.Snap(transform.position + Vector3.down * 1.75f);
+    public Vector3 GroundPosition => queen != null && queen.Active ? FreezerVenusArena.Snap(logicalGroundPosition) :
+        FreezerVenusArena.Snap(transform.position + Vector3.down * 1.75f);
     public Vector3 CrownPosition => FreezerVenusArena.Snap(transform.position + Vector3.up * 0.875f);
     public Sprite[] SmallDollFrames => dollFrames;
 
@@ -155,7 +156,15 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
 
     private void FixedUpdate()
     {
-        if (!CombatActive || dead || attacking || !moving || hurtTime > 0f || GamePauseController.IsPaused) return;
+        if (!CombatActive || dead || GamePauseController.IsPaused) return;
+        float floatOffset = 0f;
+        if (queen != null && queen.Active)
+        {
+            queen.AdvanceFloat(Time.fixedDeltaTime);
+            floatOffset = queen.FloatOffset;
+            SetWorldPosition(logicalGroundPosition + Vector3.up * (1.75f + floatOffset));
+        }
+        if (attacking || !moving || hurtTime > 0f) return;
         // Fly diagonally until one axis reaches its destination, then finish cardinally.
         // Floor obstacles and bombs only constrain grounded projectiles, not the boss.
         Vector3 delta = movementDestination - logicalGroundPosition;
@@ -166,7 +175,7 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
         logicalGroundPosition += new Vector3(
             Mathf.Clamp(travel.x, -Mathf.Abs(delta.x), Mathf.Abs(delta.x)),
             Mathf.Clamp(travel.y, -Mathf.Abs(delta.y), Mathf.Abs(delta.y)), 0f);
-        SetWorldPosition(logicalGroundPosition + Vector3.up * 1.75f);
+        SetWorldPosition(logicalGroundPosition + Vector3.up * (1.75f + floatOffset));
         if ((logicalGroundPosition - movementDestination).sqrMagnitude < 0.000001f)
         {
             // Update checks for players above before choosing the next attack.
@@ -390,7 +399,7 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
         PlayAttackSfx(Resources.Load<AudioClip>("Sounds/KickBomb"));
     }
 
-    private void PlayAttackSfx(AudioClip clip, float gain = 1f)
+    public void PlayAttackSfx(AudioClip clip, float gain = 1f)
     {
         if (clip == null || audioSource == null || !audioSource.isActiveAndEnabled) return;
         float effectiveVolume = Mathf.Max(0f, gain) * Mathf.Clamp01(GameAudioSettings.SfxVolume);

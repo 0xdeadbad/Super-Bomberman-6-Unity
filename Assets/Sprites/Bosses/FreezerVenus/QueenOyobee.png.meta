@@ -526,8 +526,8 @@ TextureImporter:
         serializedVersion: 2
         x: 19
         y: 251
-        width: 29
-        height: 71
+        width: 30
+        height: 72
       alignment: 9
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -548,8 +548,8 @@ TextureImporter:
         serializedVersion: 2
         x: 51
         y: 251
-        width: 29
-        height: 71
+        width: 30
+        height: 72
       alignment: 9
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -565,13 +565,13 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Scepter2
+      name: Scepter4
       rect:
         serializedVersion: 2
         x: 118
-        y: 251
+        y: 253
         width: 66
-        height: 33
+        height: 32
       alignment: 9
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -608,6 +608,138 @@ TextureImporter:
       indices: 
       edges: []
       weights: []
+    - serializedVersion: 2
+      name: Shadow
+      rect:
+        serializedVersion: 2
+        x: 11
+        y: 234
+        width: 46
+        height: 16
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 64803284d676b314f9b9800463d26652
+      internalID: -765441394
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Scepter3
+      rect:
+        serializedVersion: 2
+        x: 83
+        y: 266
+        width: 30
+        height: 38
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 5e2164e537bee704c8819616bbee5abc
+      internalID: -1956766507
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Snow2
+      rect:
+        serializedVersion: 2
+        x: 90
+        y: 213
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: d47524f939194924f8b20a929312e104
+      internalID: 551598752
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Snow3
+      rect:
+        serializedVersion: 2
+        x: 103
+        y: 209
+        width: 14
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: a61ef95f2be5b5b44bd384fcb4196461
+      internalID: -916857185
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Snow4
+      rect:
+        serializedVersion: 2
+        x: 119
+        y: 208
+        width: 16
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 8da0670a0787e824386bd4ed8dbf1aac
+      internalID: 1329027639
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Snow5
+      rect:
+        serializedVersion: 2
+        x: 136
+        y: 208
+        width: 16
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 34b68b548cb654346bd26c5940713c7b
+      internalID: -799487787
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
     outline: []
     customData: 
     physicsShape: []
@@ -636,9 +768,15 @@ TextureImporter:
       Idle3: -1863545169
       Scepter0: -2084333327
       Scepter1: -1868553770
-      Scepter2: 764316575
+      Scepter3: -1956766507
+      Scepter4: 764316575
+      Shadow: -765441394
       Snow0: -1489222087
       Snow1: -1464033138
+      Snow2: 551598752
+      Snow3: -916857185
+      Snow4: 1329027639
+      Snow5: -799487787
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

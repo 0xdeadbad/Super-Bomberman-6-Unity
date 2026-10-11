@@ -12,7 +12,15 @@ public sealed class QueenOyobeeController : MonoBehaviour
     public Sprite[] crownlessFrames;
     public Sprite[] crownFrames;
     public Sprite[] snowFrames;
+    public Sprite[] snowDestructionFrames;
     public Sprite[] scepterFrames;
+    public Sprite shadowSprite;
+    public AudioClip iceCreateSfx;
+    [Min(0f)] public float iceCreateSfxGain = 3f;
+    public AudioClip iceThrowSfx;
+    [Min(0f)] public float iceThrowSfxGain = 3f;
+    public AudioClip scepterShakeSfx;
+    [Min(0f)] public float scepterShakeSfxGain = 3f;
     public AudioClip music;
     [Range(0f, 1f)] public float musicVolume = 0.4f;
     private FreezerVenusBoss boss;
@@ -21,6 +29,12 @@ public sealed class QueenOyobeeController : MonoBehaviour
     private GameObject telegraph;
     private QueenOyobeeIceWave iceWave;
     private readonly List<QueenOyobeeProjectile> projectiles = new();
+    private float floatTime;
+    private bool iceThrowSoundPlayed;
+    public const float IceScepterSeconds = 0.52f;
+    private static readonly int[] IceScepterSequence = { 0, 1, 0, 3, 3, 4, 4, 4, 4, 3 };
+    public float FloatOffset => Mathf.Round(Mathf.Sin(floatTime * Mathf.PI * 2f / 1.6f) * 2f) / 16f;
+    public void AdvanceFloat(float seconds) => floatTime += seconds;
     public bool Active { get; private set; }
     public FreezerVenusBoss Boss => boss;
     public Vector3 CrownOrigin => boss.transform.position + Vector3.up * 3.125f;
@@ -29,8 +43,6 @@ public sealed class QueenOyobeeController : MonoBehaviour
 
     public IEnumerator TransformRoutine()
     {
-        if (FindAnyObjectByType<StageAssets.Stage35SnowfallEffect>() == null)
-            new GameObject("Queen Oyobee stage snowfall").AddComponent<StageAssets.Stage35SnowfallEffect>();
         boss.body.color = Color.white;
         boss.body.sprite = transformationSprite;
         if (GameMusicController.Instance != null && music != null)
@@ -50,6 +62,12 @@ public sealed class QueenOyobeeController : MonoBehaviour
         boss.body.enabled = true;
         boss.body.color = Color.white;
         Active = true;
+        if (boss.shadow != null && shadowSprite != null)
+        {
+            boss.shadow.sprite = shadowSprite;
+            boss.shadow.color = Color.white;
+            boss.shadow.transform.localScale = Vector3.one;
+        }
         boss.SetFrame(idleFrames, 0);
         var go = new GameObject("Queen Oyobee scepter");
         go.transform.SetParent(boss.body.transform, false);
@@ -67,6 +85,10 @@ public sealed class QueenOyobeeController : MonoBehaviour
         wornCrown.sortingOrder = boss.body.sortingOrder + 1;
         iceWave = QueenOyobeeIceWave.Create(this);
         while (iceWave != null) yield return null;
+        var snowfall = FindAnyObjectByType<StageAssets.Stage35SnowfallEffect>();
+        if (snowfall == null)
+            snowfall = new GameObject("Queen Oyobee stage snowfall").AddComponent<StageAssets.Stage35SnowfallEffect>();
+        snowfall.Configure(240, 1);
     }
 
     public IEnumerator AttackRoutine(int index)
@@ -82,31 +104,43 @@ public sealed class QueenOyobeeController : MonoBehaviour
             path = QueenOyobeeProjectile.ExpandCrownPath(boss.Arena, path);
             telegraph = QueenOyobeeProjectile.CreateTelegraph(this, path);
         }
-        // Two horizontal sweeps signal snow; two vertical lifts signal the crown.
-        for (int repeat = 0; repeat < 2; repeat++)
+        if (ice)
         {
-            for (int frame = 0; frame < 4; frame++)
+            yield return PlayIceScepterShake();
+            // Complete the casting frame before any orbiting snow becomes visible.
+            yield return null;
+            while (GamePauseController.IsPaused) yield return null;
+        }
+        else
+        {
+            // Preserve the crown preparation: two vertical lifts.
+            for (int repeat = 0; repeat < 2; repeat++)
             {
-                if (scepter != null)
+                for (int frame = 0; frame < 4; frame++)
                 {
-                    scepter.sprite = scepterFrames[ice ? (frame == 1 ? 2 : 0) : (frame == 1 ? 1 : 0)];
-                    scepter.transform.localRotation = Quaternion.Euler(0f, 0f,
-                        ice && frame == 1 ? 15f : 0f);
-                    scepter.transform.localPosition = new Vector3(1.125f,
-                        0.25f + (!ice && frame == 1 ? 0.5f : 0f), 0f);
+                    if (scepter != null)
+                    {
+                        scepter.sprite = scepterFrames[frame == 1 ? 1 : 0];
+                        scepter.transform.localRotation = Quaternion.identity;
+                        scepter.transform.localPosition = new Vector3(1.125f,
+                            0.25f + (frame == 1 ? 0.5f : 0f), 0f);
+                    }
+                    yield return FreezerVenusBoss.WaitUnpaused(0.09f);
                 }
-                yield return FreezerVenusBoss.WaitUnpaused(ice ? 0.065f : 0.09f);
             }
         }
         if (scepter != null)
         {
             scepter.sprite = scepterFrames[0];
+            scepter.flipX = false;
+            scepter.flipY = false;
             scepter.transform.localRotation = Quaternion.identity;
             scepter.transform.localPosition = new Vector3(1.375f, 0.25f, 0f);
         }
         projectiles.RemoveAll(p => p == null);
         if (ice)
         {
+            iceThrowSoundPlayed = false;
             var destinations = QueenOyobeeProjectile.GroundSnowDestinations(boss.Arena, boss.GroundPosition);
             for (int i = 0; i < 6; i++)
             {
@@ -114,6 +148,7 @@ public sealed class QueenOyobeeController : MonoBehaviour
                     projectiles.Add(QueenOyobeeProjectile.CreateGroundSnow(this, i, destinations[i]));
                 projectiles.Add(QueenOyobeeProjectile.Create(this, false, i));
             }
+            boss.PlayAttackSfx(iceCreateSfx, iceCreateSfxGain);
             yield return FreezerVenusBoss.WaitUnpaused(0.3f);
         }
         else
@@ -130,6 +165,50 @@ public sealed class QueenOyobeeController : MonoBehaviour
         yield return FreezerVenusBoss.WaitUnpaused(0.18f);
     }
 
+    public void PlayIceThrowOnce()
+    {
+        if (iceThrowSoundPlayed) return;
+        iceThrowSoundPlayed = true;
+        boss.PlayAttackSfx(iceThrowSfx, iceThrowSfxGain);
+    }
+
+    public static void IceScepterPose(int step, out int frame, out bool flipX, out bool flipY)
+    {
+        step = Mathf.Clamp(step, 0, IceScepterSequence.Length - 1);
+        frame = IceScepterSequence[step];
+        flipX = step == 4 || step == 6 || step == 7 || step == 9;
+        flipY = step == 4 || step == 9;
+    }
+
+    private IEnumerator PlayIceScepterShake()
+    {
+        float elapsed = 0f;
+        bool secondSoundPlayed = false;
+        boss.PlayAttackSfx(scepterShakeSfx, scepterShakeSfxGain);
+        // One clock keeps ten poses inside the original eight-frame preparation duration.
+        while (elapsed < IceScepterSeconds)
+        {
+            int step = Mathf.Min(9, Mathf.FloorToInt(elapsed * 10f / IceScepterSeconds));
+            IceScepterPose(step, out int frame, out bool flipX, out bool flipY);
+            if (scepter != null)
+            {
+                scepter.sprite = scepterFrames[frame];
+                scepter.flipX = flipX;
+                scepter.flipY = flipY;
+                scepter.transform.localRotation = Quaternion.identity;
+                scepter.transform.localPosition = new Vector3(1.125f, 0.25f, 0f);
+            }
+            // Step seven is the second consecutive horizontally flipped Scepter4.
+            if (step >= 7 && !secondSoundPlayed)
+            {
+                boss.PlayAttackSfx(scepterShakeSfx, scepterShakeSfxGain);
+                secondSoundPlayed = true;
+            }
+            yield return null;
+            if (!GamePauseController.IsPaused) elapsed += Time.deltaTime;
+        }
+    }
+
     public void ClearProjectiles()
     {
         if (telegraph != null) Destroy(telegraph);
@@ -143,6 +222,11 @@ public sealed class QueenOyobeeController : MonoBehaviour
 
     public void SyncVisibility()
     {
+        if (boss.shadow != null && shadowSprite != null)
+        {
+            boss.shadow.transform.position = boss.GroundPosition;
+            boss.shadow.enabled = boss.CombatActive && boss.body.enabled;
+        }
         if (scepter != null) scepter.enabled = boss.CombatActive && boss.body.enabled;
         if (wornCrown != null) wornCrown.gameObject.SetActive(boss.body.enabled);
     }
