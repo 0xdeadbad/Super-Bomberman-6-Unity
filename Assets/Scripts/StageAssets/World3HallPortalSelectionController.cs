@@ -97,7 +97,7 @@ namespace StageAssets
 
         private void Awake()
         {
-            PresentationBlocked = World3HallChipAssemblyController.HasPendingReveal;
+            PresentationBlocked = !BossRushSession.IsWorld3HallEncounter && World3HallChipAssemblyController.HasPendingReveal;
             if (exitCursor != null) exitCursorPosition = exitCursor.transform.position;
             string initialStage = focusedStageSceneName;
             focusedStageSceneName = null;
@@ -106,11 +106,14 @@ namespace StageAssets
                 string pendingStage = World3HallChipAssemblyController.PendingRevealStage;
                 foreach (var portal in portals)
                     if (portal != null)
-                        portal.SetAvailable(StageUnlockProgress.IsUnlocked(portal.DestinationScene) &&
+                        portal.SetAvailable(!BossRushSession.IsWorld3HallEncounter && StageUnlockProgress.IsUnlocked(portal.DestinationScene) &&
                             (pendingStage == null || portal.UnlockedBeforeClear(pendingStage)));
             }
 
-            SelectInitialStage(initialStage);
+            if (!BossRushSession.IsWorld3HallEncounter)
+                SelectInitialStage(initialStage);
+            else
+                transitioning = true;
 
             audioSource = GetComponent<AudioSource>();
             audioSource.playOnAwake = false;
@@ -129,6 +132,31 @@ namespace StageAssets
                 else
                     selectedStageLabel.enabled = false;
             }
+        }
+
+        private IEnumerator Start()
+        {
+            if (!BossRushSession.IsWorld3HallEncounter)
+                yield break;
+
+            bool finalStage = BossRushSession.GetCurrentStageSceneName() == "Stage_3-8";
+            if (stageSevenSequence == null || (finalStage ? !stageSevenSequence.CanPlayStageEight : !stageSevenSequence.CanPlay))
+            {
+                Debug.LogError("World3 Hall Boss Rush encounter is not configured.", this);
+                yield break;
+            }
+
+            if (portals != null)
+                foreach (var portal in portals)
+                    if (portal != null)
+                        portal.gameObject.SetActive(false);
+
+            // Wait for spawning and fade-in, then start directly with the tile drop.
+            yield return null;
+            while (StageIntroTransition.Instance != null && StageIntroTransition.Instance.IntroRunning)
+                yield return null;
+
+            stageSevenSequence.Play(finalStage);
         }
 
         private void LateUpdate()

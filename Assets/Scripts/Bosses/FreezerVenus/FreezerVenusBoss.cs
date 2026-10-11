@@ -140,7 +140,8 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
         if (retargetTimer <= 0f) RefreshPlayers();
         if (!attacking && hurtTime > 0f) SetFrame(hurtFrames, (int)(animationTime * 8f) % Mathf.Max(1, hurtFrames.Length));
         else if (!attacking) SetFrame(idleFrames, (int)(animationTime * 5f) % Mathf.Max(1, idleFrames.Length));
-        if (attacking || moving || hurtTime > 0f) return;
+        if (attacking || hurtTime > 0f) return;
+        if (TryChasePlayerAbove() || moving) return;
         if (FindTarget(transform.position) != null)
             StartCoroutine(AttackRoutine());
     }
@@ -161,14 +162,28 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
         SetWorldPosition(logicalGroundPosition + Vector3.up * 1.75f);
         if ((logicalGroundPosition - movementDestination).sqrMagnitude < 0.000001f)
         {
+            // Update checks for players above before choosing the next attack.
             moving = false;
-            if (FindTarget(transform.position) != null)
-                StartCoroutine(AttackRoutine());
         }
+    }
+
+    private bool TryChasePlayerAbove()
+    {
+        var target = FindTarget(GroundPosition, aboveOnly: true);
+        if (target == null || Arena.Ground == null) return false;
+
+        // The body floats above its ground position, so reaching the player's
+        // floor cell puts the boss above them and makes downward attacks useful.
+        Vector3 destination = Arena.Center(Arena.NearestFloor(target.transform.position));
+        if ((destination - logicalGroundPosition).sqrMagnitude < 0.000001f) return false;
+        movementDestination = destination;
+        moving = true;
+        return true;
     }
 
     private void ChooseMovementDestination()
     {
+        if (TryChasePlayerAbove()) return;
         var target = FindTarget(GroundPosition);
         if (target == null || Arena.Ground == null) { moving = false; return; }
         Vector3Int origin = Arena.Cell(GroundPosition);
@@ -385,7 +400,7 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
         retargetTimer = 0.3f;
     }
 
-    public MovementController FindTarget(Vector2 origin)
+    public MovementController FindTarget(Vector2 origin, bool aboveOnly = false)
     {
         MovementController closest = null;
         float distance = float.PositiveInfinity;
@@ -394,6 +409,7 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
         {
             if (player == null || !player.isActiveAndEnabled || !player.CompareTag("Player") ||
                 player.isDead || player.IsEndingStage) continue;
+            if (aboveOnly && player.transform.position.y <= transform.position.y) continue;
             float candidate = ((Vector2)player.transform.position - origin).sqrMagnitude;
             if (candidate >= distance) continue;
             closest = player;

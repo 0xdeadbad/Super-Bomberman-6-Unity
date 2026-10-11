@@ -78,6 +78,12 @@ namespace StageAssets
 
         public bool CanPlayStageEight => CanPlay && stageEightIntro != null && stageEightLoop != null && freezerVenusPrefab != null;
 
+        private void Awake()
+        {
+            if (BossRushSession.IsWorld3HallEncounter && hallExit != null)
+                hallExit.SetActive(false);
+        }
+
         public void Play(bool finalStage = false)
         {
             if (started || (finalStage ? !CanPlayStageEight : !CanPlay))

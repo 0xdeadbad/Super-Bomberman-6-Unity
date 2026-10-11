@@ -37,7 +37,7 @@ namespace StageAssets
 
         private void Awake()
         {
-            if (HasPendingReveal)
+            if (!BossRushSession.IsWorld3HallEncounter && HasPendingReveal)
             {
                 revealingPart = pendingRevealStage[8] - '1';
                 SetAlpha(parts[revealingPart], 0f);

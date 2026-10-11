@@ -255,6 +255,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   playerId: 1
   useAIInput: 1
+  specialBombsOnEveryPlacement: 1
   bombPrefab: {fileID: 147425199346742615, guid: b141cb2d60d85504dad495e1a188c108, type: 3}
   searchBombPrefab: {fileID: 147425199346742615, guid: 457adb3be7e4eb4458f374993478c43a, type: 3}
   pierceBombPrefab: {fileID: 0}
