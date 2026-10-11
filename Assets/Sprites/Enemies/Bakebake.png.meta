@@ -126,6 +126,32 @@ TextureImporter:
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: iOS
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
     sprites:
@@ -134,9 +160,9 @@ TextureImporter:
       rect:
         serializedVersion: 2
         x: 0
-        y: 24
-        width: 32
-        height: 24
+        y: 64
+        width: 30
+        height: 32
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -155,10 +181,10 @@ TextureImporter:
       name: Bakebake_1
       rect:
         serializedVersion: 2
-        x: 32
-        y: 24
-        width: 32
-        height: 24
+        x: 30
+        y: 64
+        width: 30
+        height: 32
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -177,10 +203,10 @@ TextureImporter:
       name: Bakebake_2
       rect:
         serializedVersion: 2
-        x: 64
-        y: 24
-        width: 32
-        height: 24
+        x: 90
+        y: 64
+        width: 30
+        height: 32
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -200,9 +226,9 @@ TextureImporter:
       rect:
         serializedVersion: 2
         x: 0
-        y: 0
-        width: 32
-        height: 24
+        y: 32
+        width: 30
+        height: 32
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -221,10 +247,10 @@ TextureImporter:
       name: Bakebake_4
       rect:
         serializedVersion: 2
-        x: 32
-        y: 0
-        width: 32
-        height: 24
+        x: 30
+        y: 32
+        width: 30
+        height: 32
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -243,10 +269,10 @@ TextureImporter:
       name: Bakebake_5
       rect:
         serializedVersion: 2
-        x: 64
-        y: 0
-        width: 32
-        height: 24
+        x: 90
+        y: 32
+        width: 30
+        height: 32
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -257,6 +283,116 @@ TextureImporter:
       bones: []
       spriteID: dc3c5b23fdd48aad0800000000000000
       internalID: -2690815156330052659
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bakebake_Walk2
+      rect:
+        serializedVersion: 2
+        x: 60
+        y: 64
+        width: 30
+        height: 32
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 1fb8b7051de14004983032aee10b9814
+      internalID: -396780049
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bakebake_Intangible2
+      rect:
+        serializedVersion: 2
+        x: 60
+        y: 32
+        width: 30
+        height: 32
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 28636c10ab84c3a4ab51a79f140b8310
+      internalID: 1060431123
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bakebake_EyesWalk
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 30
+        height: 32
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 379394babfba664479b1898efebdb6c4
+      internalID: -187355072
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bakebake_EyesDeath
+      rect:
+        serializedVersion: 2
+        x: 30
+        y: 0
+        width: 30
+        height: 32
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 90f8d3dd27e07564cb0dd831759514a8
+      internalID: -318482324
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bakebake_EyesSquished
+      rect:
+        serializedVersion: 2
+        x: 60
+        y: 0
+        width: 30
+        height: 32
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: e958f9d3994660e43a2f274e03b05bf9
+      internalID: -1186529472
       vertices: []
       indices: 
       edges: []
@@ -283,6 +419,11 @@ TextureImporter:
       Bakebake_3: -3404582999036610763
       Bakebake_4: 6783471168504496604
       Bakebake_5: -2690815156330052659
+      Bakebake_EyesDeath: -318482324
+      Bakebake_EyesSquished: -1186529472
+      Bakebake_EyesWalk: -187355072
+      Bakebake_Intangible2: 1060431123
+      Bakebake_Walk2: -396780049
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

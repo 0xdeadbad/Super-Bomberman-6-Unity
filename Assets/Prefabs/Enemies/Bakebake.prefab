@@ -27,7 +27,7 @@ Transform:
   m_GameObject: {fileID: 951862542575943034}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.45, z: 0}
+  m_LocalPosition: {x: 0, y: 0.5, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -121,6 +121,7 @@ MonoBehaviour:
   respectGamePause: 1
   loop: 0
   loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 0
   frameOffsets: []
   pingPong: 0
@@ -153,7 +154,7 @@ Transform:
   m_GameObject: {fileID: 2946339164999180951}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0.5, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -235,6 +236,8 @@ MonoBehaviour:
   animationSprite:
   - {fileID: -3852942282330010603, guid: 4a54ba65c33544f9af50b3e5443fc47d, type: 3}
   - {fileID: -1009307309338015969, guid: 4a54ba65c33544f9af50b3e5443fc47d, type: 3}
+  - {fileID: -396780049, guid: 4a54ba65c33544f9af50b3e5443fc47d, type: 3}
+  - {fileID: -1009307309338015969, guid: 4a54ba65c33544f9af50b3e5443fc47d, type: 3}
   allowFlipX: 0
   animationTime: 0.25
   useSequenceDuration: 0
@@ -244,6 +247,7 @@ MonoBehaviour:
   respectGamePause: 1
   loop: 1
   loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 0
   frameOffsets: []
   pingPong: 0
@@ -264,7 +268,6 @@ GameObject:
   - component: {fileID: 429121724601369016}
   - component: {fileID: 3728096759542949433}
   - component: {fileID: 134538716640764669}
-  - component: {fileID: 4001940002796840624}
   - component: {fileID: 575511757759231143}
   m_Layer: 10
   m_Name: Bakebake
@@ -529,6 +532,8 @@ MonoBehaviour:
   recheckStuckEverySeconds: 0.25
   minAvailablePathsToTurn: 3
   preferTurnAtJunction: 0
+  passesThroughDestructibles: 0
+  junctionPassDestructiblesTag: Destructibles
   destructiblesTag: Destructibles
   ghostAlpha: 1
   deathAlpha: 1
@@ -542,26 +547,12 @@ MonoBehaviour:
   intangibleFrames:
   - {fileID: -3404582999036610763, guid: 4a54ba65c33544f9af50b3e5443fc47d, type: 3}
   - {fileID: 6783471168504496604, guid: 4a54ba65c33544f9af50b3e5443fc47d, type: 3}
+  - {fileID: 1060431123, guid: 4a54ba65c33544f9af50b3e5443fc47d, type: 3}
+  - {fileID: 6783471168504496604, guid: 4a54ba65c33544f9af50b3e5443fc47d, type: 3}
   tangibleDurationRange: {x: 3, y: 6}
   intangibleDuration: 2
   squishedPose: {fileID: 5056636645730747749}
   coreDestruction: {fileID: 3712418123939325388}
---- !u!114 &4001940002796840624
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2974861450268481676}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dc70610b73af40e19b4fe65be80d850a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BlackoutColorPalette
-  visibleColors:
-  - {r: 0, g: 0, b: 0, a: 1}
-  - {r: 1, g: 1, b: 1, a: 1}
-  colorTolerance: 0.001
 --- !u!114 &575511757759231143
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -577,46 +568,50 @@ MonoBehaviour:
   maskMaterial: {fileID: 2100000, guid: d2aa593467d646c799107c41bca617fb, type: 2}
   parts:
   - source: {fileID: 5913660504557966954}
+    overlaySprite: {fileID: -187355072, guid: 4a54ba65c33544f9af50b3e5443fc47d, type: 3}
     region:
       serializedVersion: 2
       x: 0
       y: 0
       width: 1
       height: 1
-    palette: {fileID: 4001940002796840624}
+    palette: {fileID: 0}
     fullyVisibleSprites: []
     colors: []
     colorTolerance: 0.01
   - source: {fileID: 7407751945412655211}
+    overlaySprite: {fileID: -318482324, guid: 4a54ba65c33544f9af50b3e5443fc47d, type: 3}
     region:
       serializedVersion: 2
       x: 0
       y: 0
       width: 1
       height: 1
-    palette: {fileID: 4001940002796840624}
+    palette: {fileID: 0}
     fullyVisibleSprites: []
     colors: []
     colorTolerance: 0.01
   - source: {fileID: 5056636645730747749}
+    overlaySprite: {fileID: -1186529472, guid: 4a54ba65c33544f9af50b3e5443fc47d, type: 3}
     region:
       serializedVersion: 2
       x: 0
       y: 0
       width: 1
       height: 1
-    palette: {fileID: 4001940002796840624}
+    palette: {fileID: 0}
     fullyVisibleSprites: []
     colors: []
     colorTolerance: 0.01
   - source: {fileID: 849095899774599032}
+    overlaySprite: {fileID: 0}
     region:
       serializedVersion: 2
       x: 0
       y: 0
       width: 1
       height: 1
-    palette: {fileID: 4001940002796840624}
+    palette: {fileID: 0}
     fullyVisibleSprites:
     - {fileID: 835706428027011685, guid: c37102e1356f5354b9d804613dcbdacb, type: 3}
     - {fileID: -490596993370003520, guid: c37102e1356f5354b9d804613dcbdacb, type: 3}
@@ -655,7 +650,7 @@ Transform:
   m_GameObject: {fileID: 3666740137074464204}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.34, z: 0}
+  m_LocalPosition: {x: 0, y: 0.5, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -752,6 +747,7 @@ MonoBehaviour:
   respectGamePause: 1
   loop: 0
   loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 0
   frameOffsets: []
   pingPong: 0
@@ -784,7 +780,7 @@ Transform:
   m_GameObject: {fileID: 3713774675268359617}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0.5, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -874,6 +870,7 @@ MonoBehaviour:
   respectGamePause: 1
   loop: 0
   loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 0
   frameOffsets: []
   pingPong: 0

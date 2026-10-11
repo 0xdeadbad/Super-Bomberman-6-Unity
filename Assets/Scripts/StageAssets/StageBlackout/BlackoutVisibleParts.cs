@@ -10,6 +10,8 @@ public sealed class BlackoutVisibleParts : MonoBehaviour
     private sealed class Part
     {
         public SpriteRenderer source;
+        [Tooltip("Optional authored sprite drawn above darkness instead of copying the body. Match the source cell size, pivot and PPU for alignment.")]
+        public Sprite overlaySprite = null;
         [Tooltip("Normalized sprite rectangle: (0,0) bottom-left, (1,1) top-right. Follows flips.")]
         public Rect region = new(0f, 0f, 1f, 1f);
         [Tooltip("Optional prefab palette. When assigned, its colors and tolerance replace the inline settings below.")]
@@ -21,7 +23,7 @@ public sealed class BlackoutVisibleParts : MonoBehaviour
         [Range(0f, 0.25f)] public float colorTolerance = 0.01f;
         [NonSerialized] public SpriteRenderer overlay;
         [NonSerialized] public Material material;
-        public bool IsFullSprite => source != null && source.sprite != null &&
+        public bool IsFullSprite => overlaySprite != null || source != null && source.sprite != null &&
             fullyVisibleSprites != null && Array.IndexOf(fullyVisibleSprites, source.sprite) >= 0;
         public bool CanReveal => IsFullSprite || palette == null || palette.CanReveal;
         public Color[] EffectiveColors => IsFullSprite ? Array.Empty<Color>() :
@@ -81,7 +83,7 @@ public sealed class BlackoutVisibleParts : MonoBehaviour
             overlay.enabled = true;
             overlay.transform.SetPositionAndRotation(source.transform.position, source.transform.rotation);
             overlay.transform.localScale = source.transform.lossyScale;
-            overlay.sprite = source.sprite;
+            overlay.sprite = part.overlaySprite != null ? part.overlaySprite : source.sprite;
             overlay.flipX = source.flipX;
             overlay.flipY = source.flipY;
             overlay.color = source.color;
@@ -89,7 +91,7 @@ public sealed class BlackoutVisibleParts : MonoBehaviour
             overlay.sortingOrder = Mathf.Clamp(darkness.SortingOrder + 1 + Mathf.Max(0, source.sortingOrder), -32768, 32767);
             overlay.maskInteraction = source.maskInteraction;
 
-            Bounds bounds = source.sprite.bounds;
+            Bounds bounds = overlay.sprite.bounds;
             part.material.SetVector("_SpriteBounds", new Vector4(bounds.min.x, bounds.min.y, bounds.size.x, bounds.size.y));
             Rect region = part.region;
             part.material.SetVector("_VisibleRegion", new Vector4(region.xMin, region.yMin, region.xMax, region.yMax));
