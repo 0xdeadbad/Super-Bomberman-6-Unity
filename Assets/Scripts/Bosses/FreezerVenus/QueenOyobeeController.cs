@@ -36,6 +36,7 @@ public sealed class QueenOyobeeController : MonoBehaviour
     public float FloatOffset => Mathf.Round(Mathf.Sin(floatTime * Mathf.PI * 2f / 1.6f) * 2f) / 16f;
     public void AdvanceFloat(float seconds) => floatTime += seconds;
     public bool Active { get; private set; }
+    public Sprite[] CurrentIdleFrames => wornCrown != null && !wornCrown.enabled ? crownlessFrames : idleFrames;
     public FreezerVenusBoss Boss => boss;
     public Vector3 CrownOrigin => boss.transform.position + Vector3.up * 3.125f;
 

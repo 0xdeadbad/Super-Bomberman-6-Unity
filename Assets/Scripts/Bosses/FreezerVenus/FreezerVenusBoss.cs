@@ -145,9 +145,9 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
         retargetTimer -= Time.deltaTime;
         if (retargetTimer <= 0f) RefreshPlayers();
         Sprite[] currentHurt = queen != null && queen.Active ? queen.hurtFrames : hurtFrames;
-        Sprite[] currentIdle = queen != null && queen.Active ? queen.idleFrames : idleFrames;
+        Sprite[] currentIdle = queen != null && queen.Active ? queen.CurrentIdleFrames : idleFrames;
         if (!attacking && hurtTime > 0f) SetFrame(currentHurt, (int)(animationTime * 8f) % Mathf.Max(1, currentHurt.Length));
-        else if (!attacking) SetFrame(currentIdle, (int)(animationTime * 5f) % Mathf.Max(1, currentIdle.Length));
+        else if (!attacking || (queen != null && queen.Active)) SetFrame(currentIdle, (int)(animationTime * 5f) % Mathf.Max(1, currentIdle.Length));
         if (attacking || hurtTime > 0f) return;
         if (TryChasePlayerAbove() || moving) return;
         if (FindTarget(transform.position) != null)
