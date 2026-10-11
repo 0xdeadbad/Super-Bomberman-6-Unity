@@ -58,6 +58,9 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
     private int attackIndex;
     private bool attacking;
     private bool dead;
+    private bool hardCampaign;
+    private bool transforming;
+    private QueenOyobeeController queen;
     public bool CombatActive { get; private set; }
     public int Life => health != null ? health.life : 10;
     public FreezerVenusArena Arena { get; private set; }
@@ -71,6 +74,7 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
         rb = GetComponent<Rigidbody2D>();
         hitbox = GetComponent<Collider2D>();
         audioSource = GetComponent<AudioSource>();
+        queen = GetComponent<QueenOyobeeController>();
         health.life = 10;
         ApplyCampaignDifficultyModifiers();
         health.hitInvulnerableDuration = 0.85f;
@@ -97,6 +101,7 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
         if (difficulty != Assets.Scripts.SaveSystem.NormalGameDifficulty.Hard &&
             difficulty != Assets.Scripts.SaveSystem.NormalGameDifficulty.Hardcore) return;
 
+        hardCampaign = true;
         health.AddLife(2);
         moveSpeed *= 1.5f;
     }
@@ -132,14 +137,16 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
 
     private void Update()
     {
-        if (!CombatActive || dead || GamePauseController.IsPaused) return;
+        if (!CombatActive || dead || transforming || GamePauseController.IsPaused) return;
         RefreshLowHealthTint();
         animationTime += Time.deltaTime;
         hurtTime = Mathf.Max(0f, hurtTime - Time.deltaTime);
         retargetTimer -= Time.deltaTime;
         if (retargetTimer <= 0f) RefreshPlayers();
-        if (!attacking && hurtTime > 0f) SetFrame(hurtFrames, (int)(animationTime * 8f) % Mathf.Max(1, hurtFrames.Length));
-        else if (!attacking) SetFrame(idleFrames, (int)(animationTime * 5f) % Mathf.Max(1, idleFrames.Length));
+        Sprite[] currentHurt = queen != null && queen.Active ? queen.hurtFrames : hurtFrames;
+        Sprite[] currentIdle = queen != null && queen.Active ? queen.idleFrames : idleFrames;
+        if (!attacking && hurtTime > 0f) SetFrame(currentHurt, (int)(animationTime * 8f) % Mathf.Max(1, currentHurt.Length));
+        else if (!attacking) SetFrame(currentIdle, (int)(animationTime * 5f) % Mathf.Max(1, currentIdle.Length));
         if (attacking || hurtTime > 0f) return;
         if (TryChasePlayerAbove() || moving) return;
         if (FindTarget(transform.position) != null)
@@ -214,6 +221,13 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
     {
         attacking = true;
         // Alternate attacks so all patterns remain available even if players camp a corner.
+        if (queen != null && queen.Active)
+        {
+            yield return queen.AttackRoutine(attackIndex++);
+            attacking = false;
+            ChooseMovementDestination();
+            yield break;
+        }
         int attack = attackIndex++ % 3;
         Sprite[] preparation = attack == 1 ? iceCastFrames : attack == 2 ? dollCastFrames : castFrames;
         if (attack == 1)
@@ -420,6 +434,11 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
 
     private void RefreshLowHealthTint()
     {
+        if (hardCampaign && queen != null)
+        {
+            health.ClearPersistentTint();
+            return;
+        }
         if (dead || (CombatActive && health.life < initialFightLife * 0.5f))
             health.SetPersistentTint(new Color(1.35f, 0.45f, 0.45f, 1f), 0.4f, tintExcludedRenderers);
         else
@@ -430,12 +449,39 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
     {
         if (dead) return;
         RefreshLowHealthTint();
+        if (hardCampaign && queen != null && !queen.Active && !transforming &&
+            health.life > 0 && health.life < initialFightLife * 0.5f)
+        {
+            StopAllCoroutines();
+            ClearProjectiles();
+            ClearSummonEffects();
+            StartCoroutine(TransformToQueen());
+            return;
+        }
         // Damage still counts, but casting owns the sprite until the attack finishes.
         if (!attacking)
         {
             hurtTime = 0.45f;
-            SetFrame(hurtFrames, 0);
+            SetFrame(queen != null && queen.Active ? queen.hurtFrames : hurtFrames, 0);
         }
+    }
+
+    private IEnumerator TransformToQueen()
+    {
+        transforming = true;
+        attacking = true;
+        moving = false;
+        hurtTime = 0f;
+        health.SetExternalInvulnerability(true);
+        hitbox.enabled = false;
+        yield return queen.TransformRoutine();
+        if (dead) yield break;
+        health.SetExternalInvulnerability(false);
+        hitbox.enabled = true;
+        transforming = false;
+        attacking = false;
+        attackIndex = 0;
+        ChooseMovementDestination();
     }
 
     private void OnTriggerEnter2D(Collider2D other) => HandleContact(other);
@@ -476,6 +522,7 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
         StopAllCoroutines();
         ClearProjectiles();
         ClearSummonEffects();
+        if (queen != null) queen.ClearProjectiles();
         var duel = FindAnyObjectByType<StageAssets.World3HallStageSevenSequence>();
         if (duel != null) duel.FinishDuel();
         StartCoroutine(DeathRoutine());
@@ -483,7 +530,8 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
 
     private IEnumerator DeathRoutine()
     {
-        SetFrame(hurtFrames, hurtFrames.Length - 1);
+        Sprite[] deathFrames = queen != null && queen.Active ? queen.hurtFrames : hurtFrames;
+        SetFrame(deathFrames, deathFrames.Length - 1);
         int bursts = Mathf.CeilToInt(deathSeconds / 0.15f);
         float lastEffectDuration = 0f;
         float deathElapsed = 0f;
@@ -508,9 +556,11 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
                 // Short hidden flashes accelerate from 2 to 10 blinks per second.
                 blinkPhase = Mathf.Repeat(blinkPhase + delta * Mathf.Lerp(2f, 10f, progress), 1f);
                 body.enabled = blinkPhase < Mathf.Lerp(0.85f, 0.65f, progress);
+                if (queen != null && queen.Active) queen.SyncVisibility();
             }
         }
         body.enabled = false;
+        if (queen != null && queen.Active) queen.SyncVisibility();
         yield return WaitUnpaused(lastEffectDuration);
         if (shadow != null) shadow.enabled = false;
         var manager = FindAnyObjectByType<GameManager>();
@@ -578,6 +628,7 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
         StopAllCoroutines();
         ClearProjectiles();
         ClearSummonEffects();
+        if (queen != null) queen.ClearProjectiles();
         foreach (var effect in deathEffects) if (effect != null) Destroy(effect);
         deathEffects.Clear();
     }

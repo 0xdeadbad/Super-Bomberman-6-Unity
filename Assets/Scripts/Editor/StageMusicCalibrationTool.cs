@@ -28,6 +28,9 @@ public static class StageMusicCalibrationTool
             return;
         }
 
+        if (AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Sounds/QueenOyobee.mp3") != null)
+            QueenOyobeeAuthoring.CalibrateMusic();
+
         int calibratedStages = CalibrateNormalGameStages(referenceClip);
         int calibratedHallClips = CalibrateWorld3HallMusic(referenceClip);
         int calibratedWorldMapClips = CalibrateWorldMapMusic(referenceClip);

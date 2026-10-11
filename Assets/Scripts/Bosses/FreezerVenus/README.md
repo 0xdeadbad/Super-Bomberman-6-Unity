@@ -60,3 +60,31 @@ frame-perfect reproduction of Super Bomberman 3.
 ## Validation
 
 Four NUnit checks cover routes around pillars, sealed corridors, the nearest four open lanes and blockers above the spawn point. They were invoked directly through Unity MCP and passed. The current Unity Test Framework runner returned zero discovered tests for this predefined assembly. Live Play Mode also verifies the intro pixel texture, crown origin, foot hitbox and shadow.
+
+## Hard/Hardcore Queen Oyobee phase
+
+Below half of the initial 12 HP (5 HP or less), Venus cancels her active attack,
+clears its projectiles, displays the supplied transformation sprite and becomes
+Queen Oyobee without recovering health. Transformation grants temporary external
+invulnerability and uses pause-aware timing. The red low-health tint is replaced
+by this phase in Hard/Hardcore; Normal and Boss Rush retain Venus behavior.
+
+Queen alternates two horizontal scepter sweeps followed by eight snowflakes orbiting
+for 1.1 seconds, and two vertical scepter lifts followed by a circular boomerang
+crown whose diameter joins the head and the closest player at launch. Snowflakes distribute targets among living
+players and steer at at most 35 degrees/second for their first 1.2 flight seconds.
+Snowflakes fly at 7.6 units/second (double the original Queen speed). Snow contact uses StunReceiver for 2 seconds, deals no direct damage and cannot
+refresh an active stun. A 1.5-second freeze protection follows thawing. Freeze preserves the current player sprites and tints them light blue; thaw, death and disable remove the tint. Transformation activates the same screen-anchored snowfall component used by Stage 3-5, lasting until the stage exits. Crown
+contact uses the existing health/mount path and can hit each player once per throw.
+Queen keeps Venus movement speed, remaining HP, explosions and ending sequence;
+death uses Queen's hurt sprite and crown with the shared death flashes.
+
+The supplied MP3 is assigned to the prefab and replaces the current music at the
+start of transformation. `Tools > Audio > Calibrate Queen Oyobee Music` measures
+only that clip against Robot Amusement Park Loop at volume 0.4, using the same
+representative RMS calculation as Calibrate Stage Musics. The full calibration
+command includes the Queen clip. `Tools > Bosses > Configure Queen Oyobee
+Transformation` imports and wires the phase while preserving other prefab values;
+Rebuild Freezer Venus also configures it. Imported sheets use 16 PPU, Point,
+Default compression None and no platform overrides. The original Queen sheet is
+preserved; a separate working sheet removes its magenta/orange background.

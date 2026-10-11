@@ -93,6 +93,7 @@ public static class FreezerVenusAuthoring
             PrefabUtility.SaveAsPrefabAsset(go, PrefabPath);
         }
         finally { UnityEngine.Object.DestroyImmediate(go); }
+        QueenOyobeeAuthoring.Configure();
         AssetDatabase.SaveAssets();
     }
 

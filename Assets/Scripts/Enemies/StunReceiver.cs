@@ -36,6 +36,7 @@ public partial class StunReceiver : MonoBehaviour
     Rigidbody2D rb;
 
     Coroutine stunRoutine;
+    private bool preserveSpritesForStun;
     float stunEndTime;
 
     bool suppressRestore;
@@ -122,7 +123,9 @@ public partial class StunReceiver : MonoBehaviour
             stunAnimatedRenderer = GetComponent<AnimatedSpriteRenderer>();
     }
 
-    public void Stun(float seconds)
+    public void Stun(float seconds) => Stun(seconds, preserveCurrentSprites: false);
+
+    public void Stun(float seconds, bool preserveCurrentSprites)
     {
         if (!CanReceiveStun)
             return;
@@ -146,7 +149,10 @@ public partial class StunReceiver : MonoBehaviour
             stunEndTime = newEnd;
 
         if (startingNewStun)
+        {
+            preserveSpritesForStun = preserveCurrentSprites;
             PlayRandomPlayerStunSfx();
+        }
 
         if (stunRoutine == null)
             stunRoutine = StartCoroutine(StunRoutine());
@@ -323,12 +329,12 @@ public partial class StunReceiver : MonoBehaviour
 
     IEnumerator StunRoutine()
     {
-        if (cachedMovement != null)
+        if (cachedMovement != null && !preserveSpritesForStun)
             cachedMovement.CancelPlayerPoses();
         isStunned = true;
 
         activeStunAnimatedRenderer = ResolveStunAnimatedRenderer();
-        bool wantsCustomAnim = useAnimatedStunRenderer && (activeStunAnimatedRenderer != null);
+        bool wantsCustomAnim = !preserveSpritesForStun && useAnimatedStunRenderer && (activeStunAnimatedRenderer != null);
         loggedStunVisualStart = false;
 
         stunVisualSuppressedByDamaged = false;
@@ -454,7 +460,7 @@ public partial class StunReceiver : MonoBehaviour
             }
 
             bool doShake =
-                shakeWhileStunned &&
+                !preserveSpritesForStun && shakeWhileStunned &&
                 spriteBases.Count > 0 &&
                 !(wantsCustomAnim && disableShakeWhenUsingAnimatedStun);
 
@@ -758,7 +764,14 @@ public partial class StunReceiver : MonoBehaviour
                 frozen = false
             });
 
+            SpriteRenderer currentRenderer = preserveSpritesForStun ? a.GetComponent<SpriteRenderer>() : null;
+            Sprite currentSprite = currentRenderer != null ? currentRenderer.sprite : null;
             a.SetFrozen(true);
+            if (preserveSpritesForStun)
+            {
+                if (currentRenderer != null) currentRenderer.sprite = currentSprite;
+                continue;
+            }
 
             a.idle = true;
             a.loop = false;
@@ -1193,6 +1206,12 @@ public partial class StunReceiver : MonoBehaviour
 
     private void InitializeStunVisualIfNeeded(bool wantsCustomAnim)
     {
+        if (preserveSpritesForStun)
+        {
+            if (!stunVisualInitialized && freezeAnimatedSprites) FreezeAnimations();
+            stunVisualInitialized = true;
+            return;
+        }
         if (stunVisualInitialized)
             return;
 

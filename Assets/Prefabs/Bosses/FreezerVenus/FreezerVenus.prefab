@@ -16,6 +16,7 @@ GameObject:
   - component: {fileID: 747329334712087118}
   - component: {fileID: 7294460471444389344}
   - component: {fileID: 6836336674524888619}
+  - component: {fileID: 57488694986724202}
   m_Layer: 10
   m_Name: FreezerVenus
   m_TagString: BossBomber
@@ -414,6 +415,43 @@ MonoBehaviour:
   beamOpenSeconds: 1.3
   abductionSfx: {fileID: 8300000, guid: 8e5592c8aca44cfcaa4333fb28d78760, type: 3}
   absorptionSeconds: 1.5
+--- !u!114 &57488694986724202
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7462700341061312441}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 984873c31e014a548a5ae2621e79fe94, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::QueenOyobeeController
+  transformationSprite: {fileID: 21300000, guid: 4ded79367eb54a34cba69112705af75c, type: 3}
+  idleFrames:
+  - {fileID: -328222621, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  - {fileID: -1090103221, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  - {fileID: 744765056, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  - {fileID: -1863545169, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  hurtFrames:
+  - {fileID: 1802397169, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  - {fileID: -1081982011, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  crownlessFrames:
+  - {fileID: 2080569493, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  - {fileID: -589138824, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  crownFrames:
+  - {fileID: 1732667725, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  - {fileID: -11527691, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  - {fileID: -2019206497, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  snowFrames:
+  - {fileID: -1489222087, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  - {fileID: -1464033138, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  scepterFrames:
+  - {fileID: -2084333327, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  - {fileID: -1868553770, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  - {fileID: 764316575, guid: f946d3d69819ae64eb473178fb93e6dc, type: 3}
+  music: {fileID: 8300000, guid: 2cff40ff245a18e4181fbb9a4823b8b9, type: 3}
+  musicVolume: 0.5960299
 --- !u!1 &9050139662049210414
 GameObject:
   m_ObjectHideFlags: 0
