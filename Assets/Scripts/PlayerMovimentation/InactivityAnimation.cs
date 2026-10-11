@@ -29,6 +29,9 @@ public sealed class InactivityAnimation : MonoBehaviour
     private bool isPlaying;
     private bool externalPoseActive;
     private bool manualTriggerHeld;
+    private bool manualPoseActive;
+    private PlayerAction? consumedDirection;
+    private StunReceiver stunReceiver;
     private EmoteTarget currentTarget;
 
     private MountVisualController cachedLouieVisual;
@@ -45,6 +48,7 @@ public sealed class InactivityAnimation : MonoBehaviour
     public float ChanceAltAnimation => Mathf.Clamp01(chanceAltAnimation);
     public bool RefreshFrameOnEnter => refreshFrameOnEnter;
     public bool SuppressMovementInput => manualTriggerHeld;
+    public bool KeepPrimaryLoopUntilInput { get; set; }
 
     public void CancelForExternalOverride()
     {
@@ -108,6 +112,7 @@ public sealed class InactivityAnimation : MonoBehaviour
     private void Awake()
     {
         movement = GetComponent<MovementController>();
+        stunReceiver = GetComponent<StunReceiver>();
         lastInputTime = Time.time;
         currentTarget = EmoteTarget.None;
         activeRenderer = null;
@@ -142,7 +147,28 @@ public sealed class InactivityAnimation : MonoBehaviour
         if (movement == null)
             return;
 
+        if (GamePauseController.IsPaused)
+            return;
+
+        if (stunReceiver != null && stunReceiver.IsStunned)
+        {
+            if (isPlaying)
+                CancelForExternalOverride();
+            lastInputTime = Time.time;
+            return;
+        }
+
         if (externalPoseActive)
+        {
+            if (HasAnyPlayerInput())
+                CancelForExternalOverride();
+            return;
+        }
+
+        if (!movement.InputLocked && !movement.isDead &&
+            movement.SuppressInactivityAnimation &&
+            TryGetComponent<CorneredAnimation>(out var cornered) && cornered.IsPlaying &&
+            TryStartManualEmote())
             return;
 
         if (movement.SuppressInactivityAnimation)
@@ -154,7 +180,7 @@ public sealed class InactivityAnimation : MonoBehaviour
             return;
         }
 
-        if (movement.InputLocked || movement.isDead || GamePauseController.IsPaused)
+        if (movement.InputLocked || movement.isDead)
         {
             if (isPlaying)
                 StopEmote();
@@ -166,15 +192,13 @@ public sealed class InactivityAnimation : MonoBehaviour
         if (TryStartManualEmote())
             return;
 
-        if (manualTriggerHeld)
+        if (consumedDirection.HasValue)
         {
             var input = PlayerInputManager.Instance;
-            if (input != null && input.Get(movement.PlayerId, PlayerAction.ActionL))
-                return;
-
-            manualTriggerHeld = false;
-            lastInputTime = Time.time;
+            if (input == null || !input.Get(movement.PlayerId, consumedDirection.Value))
+                consumedDirection = null;
         }
+        manualTriggerHeld = consumedDirection.HasValue;
 
         if (HasAnyPlayerInput())
         {
@@ -185,6 +209,16 @@ public sealed class InactivityAnimation : MonoBehaviour
 
             return;
         }
+
+        if (manualPoseActive && movement.IsMounted != (currentTarget == EmoteTarget.Mount))
+        {
+            CancelForExternalOverride();
+            return;
+        }
+
+        // Forced poses suspend automatic AFK selection and switching.
+        if (manualPoseActive)
+            return;
 
         float idleTime = Time.time - lastInputTime;
 
@@ -208,7 +242,8 @@ public sealed class InactivityAnimation : MonoBehaviour
         if (!isPlaying && idleTime >= secondsToTrigger)
             StartEmote(desiredTarget);
 
-        if (isPlaying && Time.time >= nextSwitchTime)
+        bool keepPrimaryLoop = KeepPrimaryLoopUntilInput && currentTarget == EmoteTarget.Player && !usingAlt;
+        if (isPlaying && !keepPrimaryLoop && Time.time >= nextSwitchTime)
         {
             SwitchEmote();
             nextSwitchTime = Time.time + switchInterval;
@@ -268,7 +303,7 @@ public sealed class InactivityAnimation : MonoBehaviour
         if (input == null)
             return false;
 
-        return input.HasAnyHeldInput(movement.PlayerId);
+        return HasPoseCancelInput(movement.PlayerId, consumedDirection);
     }
 
     private AnimatedSpriteRenderer ChooseRenderer(AnimatedSpriteRenderer primary, AnimatedSpriteRenderer alternative)
@@ -331,6 +366,11 @@ public sealed class InactivityAnimation : MonoBehaviour
     private void StopEmote()
     {
         bool wasPlaying = isPlaying;
+        if (manualPoseActive && activeRenderer != null)
+            ToggleRenderer(activeRenderer, false);
+        manualPoseActive = false;
+        manualTriggerHeld = false;
+        consumedDirection = null;
 
         if (!isPlaying && currentTarget == EmoteTarget.None)
         {
@@ -343,7 +383,7 @@ public sealed class InactivityAnimation : MonoBehaviour
 
         if (currentTarget == EmoteTarget.Mount)
         {
-            var lv = ResolveLouieVisual();
+            var lv = cachedLouieVisual != null ? cachedLouieVisual : ResolveLouieVisual();
             if (lv != null)
                 lv.SetInactivityEmote(false);
 
@@ -376,26 +416,117 @@ public sealed class InactivityAnimation : MonoBehaviour
         if (!CompareTag("Player"))
             return false;
 
+        if (TryGetComponent<PowerGloveAbility>(out var powerGlove) &&
+            powerGlove != null &&
+            powerGlove.IsHoldingBomb)
+            return false;
+
         var input = PlayerInputManager.Instance;
         if (input == null || !input.Get(movement.PlayerId, PlayerAction.ActionL))
             return false;
 
-        bool directionPressed =
-            input.GetDown(movement.PlayerId, PlayerAction.MoveUp) ||
-            input.GetDown(movement.PlayerId, PlayerAction.MoveDown) ||
-            input.GetDown(movement.PlayerId, PlayerAction.MoveLeft) ||
-            input.GetDown(movement.PlayerId, PlayerAction.MoveRight);
-
-        if (!directionPressed)
+        PlayerAction? pressed = null;
+        for (int index = (int)PlayerAction.MoveUp; index <= (int)PlayerAction.MoveRight; index++)
+        {
+            var action = (PlayerAction)index;
+            if (input.GetDown(movement.PlayerId, action))
+            {
+                pressed = action;
+                break;
+            }
+        }
+        if (!pressed.HasValue)
             return false;
 
+        CancelForExternalOverride();
+        if (TryGetComponent<CorneredAnimation>(out var cornered))
+            cornered.CancelForExternalOverride();
+        consumedDirection = pressed;
         manualTriggerHeld = true;
         lastInputTime = Time.time;
 
-        if (!isPlaying)
+        if (pressed == PlayerAction.MoveUp)
+        {
             StartEmote(ResolveDesiredTarget());
+            return true;
+        }
 
+        manualPoseActive = true;
+        isPlaying = true;
+        currentTarget = movement.IsMounted ? EmoteTarget.Mount : EmoteTarget.Player;
+        if (currentTarget == EmoteTarget.Mount)
+        {
+            movement.SetInactivityMountedDownOverride(true);
+            var mount = ResolveLouieVisual();
+            if (mount != null)
+            {
+                if (pressed == PlayerAction.MoveRight && mount.louieEndStage != null)
+                {
+                    mount.louieEndStage.CurrentFrame = 0;
+                    if (movement.endStageFrameCount > 0)
+                        mount.louieEndStage.animationTime = movement.endStageTotalTime / movement.endStageFrameCount;
+                }
+                var renderer = pressed == PlayerAction.MoveLeft
+                    ? mount.LouieInactivityEmoteLoopAlt ?? mount.LouieInactivityEmoteLoop
+                    : pressed == PlayerAction.MoveRight
+                        ? mount.louieEndStage
+                        : mount.louieCornered;
+                mount.SetInactivityEmote(renderer, true);
+            }
+        }
+        else
+        {
+            activeRenderer = pressed == PlayerAction.MoveLeft
+                ? movement.spriteRendererTimeOver
+                : pressed == PlayerAction.MoveDown
+                    ? movement.spriteRendererCornered
+                    : movement.spriteRendererEndStage;
+            if (activeRenderer == null)
+            {
+                string rendererName = pressed == PlayerAction.MoveLeft ? "TimeOver"
+                    : pressed == PlayerAction.MoveDown ? "Cornered" : "EndStage";
+                foreach (var renderer in GetComponentsInChildren<AnimatedSpriteRenderer>(true))
+                {
+                    if (renderer.gameObject.name == rendererName)
+                    {
+                        activeRenderer = renderer;
+                        break;
+                    }
+                }
+            }
+            movement.SetVisualOverrideActive(true);
+            if (activeRenderer != null)
+            {
+                activeRenderer.loop = pressed != PlayerAction.MoveRight;
+                if (pressed == PlayerAction.MoveRight)
+                {
+                    activeRenderer.pingPong = false;
+                    if (movement.endStageFrameCount > 0)
+                        activeRenderer.animationTime = movement.endStageTotalTime / movement.endStageFrameCount;
+                }
+                activeRenderer.idle = false;
+                activeRenderer.CurrentFrame = 0;
+                ToggleRenderer(activeRenderer, true);
+                activeRenderer.RefreshFrame();
+            }
+        }
         return true;
+    }
+
+    public static bool HasPoseCancelInput(int playerId, PlayerAction? ignoredDirection = null)
+    {
+        var input = PlayerInputManager.Instance;
+        if (input == null)
+            return false;
+
+        for (int index = (int)PlayerAction.MoveUp; index <= (int)PlayerAction.Select; index++)
+        {
+            var action = (PlayerAction)index;
+            if (action != PlayerAction.Start && action != PlayerAction.ActionL &&
+                action != ignoredDirection && input.Get(playerId, action))
+                return true;
+        }
+        return false;
     }
 
     private void SetPlayerEmoteEnabled(bool on)

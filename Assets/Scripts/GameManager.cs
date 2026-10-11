@@ -9,6 +9,7 @@ using UnityEngine.Tilemaps;
 
 public class GameManager : MonoBehaviour
 {
+    public event System.Action<Vector3Int> DestructibleDestroyed;
     [Serializable]
     public sealed class HiddenObjectItemAmount
     {
@@ -26,6 +27,14 @@ public class GameManager : MonoBehaviour
         [InspectorName("Random SB5 Louie Egg")]
         [Min(0)] public int randomSb5EggAmount;
         public HiddenObjectItemAmount[] itemAmounts;
+    }
+
+    [Serializable]
+    public sealed class DestructiblePrefabOverride
+    {
+        [Tooltip("The destructible tile that should use a different break-animation prefab.")]
+        public TileBase tile;
+        public Destructible prefab;
     }
 
     public enum BattleModeHiddenDropEntryKind
@@ -67,7 +76,9 @@ public class GameManager : MonoBehaviour
         new(BattleModeHiddenDropEntryKind.Item, ItemType.PowerGlove),
         new(BattleModeHiddenDropEntryKind.RandomEggsMin),
         new(BattleModeHiddenDropEntryKind.RandomEggsMax),
-        new(BattleModeHiddenDropEntryKind.Item, ItemType.Skull)
+        new(BattleModeHiddenDropEntryKind.Item, ItemType.Skull),
+        new(BattleModeHiddenDropEntryKind.Item, ItemType.LineBomb),
+        new(BattleModeHiddenDropEntryKind.Item, ItemType.SearchBomb)
     };
 
     public static readonly MountedType[] BattleModeRandomEggMountTypes =
@@ -100,6 +111,7 @@ public class GameManager : MonoBehaviour
     const string BattleVictorySfxResourcesPath = "Sounds/SB5 Sound Effects (48)";
     const string TitleScreenSceneName = "TitleScreen";
     const string BattleModeMenuSceneName = "BattleModeMenu";
+    static readonly string[] WorldBossStageSceneNames = { "Stage_1-7", "Stage_2-7" };
     static AudioClip battleVictorySfx;
 
     public static GameManager Instance { get; private set; }
@@ -126,6 +138,7 @@ public class GameManager : MonoBehaviour
     [Min(0)] public int controlBombAmount = 0;
     [Min(0)] public int powerBombAmount = 0;
     [Min(0)] public int rubberBombAmount = 0;
+    [Min(0)] public int searchBombAmount;
     [Min(0)] public int magnetBombAmount = 0;
     [Min(0)] public int fullFireAmount = 0;
     [Min(0)] public int bombPassAmount = 0;
@@ -134,6 +147,7 @@ public class GameManager : MonoBehaviour
     [Min(0)] public int heartAmount = 0;
     [Min(0)] public int oneUpAmount = 0;
     [Min(0)] public int powerGloveAmount = 0;
+    [Min(0)] public int lineBombAmount = 0;
     [Min(0)] public int blueLouieEggAmount = 0;
     [Min(0)] public int blackLouieEggAmount = 0;
     [Min(0)] public int purpleLouieEggAmount = 0;
@@ -161,9 +175,12 @@ public class GameManager : MonoBehaviour
 
     [Header("Stage Flow")]
     public string nextStageSceneName;
+    [SerializeField] private string worldMapSceneName = "WorldMap";
 
     [Header("Stage Prefabs (Optional on Boss Stages)")]
     public Destructible destructiblePrefab;
+    [Tooltip("Optional tile-specific break-animation prefabs. Tiles without an entry use Destructible Prefab.")]
+    [SerializeField] private DestructiblePrefabOverride[] destructiblePrefabOverrides;
 
     [Header("Chão")]
     [FormerlySerializedAs("floorTilemap")]
@@ -191,6 +208,15 @@ public class GameManager : MonoBehaviour
     [Tooltip("Variante sombreada do bloco destrutível, usada quando existe um bloco indestrutível logo acima dele.")]
     public TileBase tileDestrutivelComSombraDoIndestrutivel;
 
+    [System.Serializable]
+    private sealed class GroundShadowRule
+    {
+        public TileBase normalGroundTile = null;
+        public TileBase shadowGroundTile = null;
+    }
+
+    [SerializeField] private GroundShadowRule[] groundShadowRules;
+
     // Legacy API aliases keep existing gameplay code and external scene scripts compatible.
     public Tilemap groundTilemap { get => tilemapDoChao; set => tilemapDoChao = value; }
     public TileBase groundTile { get => tileChaoNormal; set => tileChaoNormal = value; }
@@ -201,6 +227,21 @@ public class GameManager : MonoBehaviour
     public TileBase[] groundShadowIgnoredTiles;
     [Tooltip("Tiles indestrutiveis que aplicam sombra no Ground em Y-1. Se vazio, qualquer tile indestrutivel aplica sombra como antes.")]
     public TileBase[] indestructibleGroundShadowCasterTiles;
+
+    public Destructible GetDestructiblePrefab(TileBase tile)
+    {
+        if (tile != null && destructiblePrefabOverrides != null)
+        {
+            for (int i = 0; i < destructiblePrefabOverrides.Length; i++)
+            {
+                DestructiblePrefabOverride entry = destructiblePrefabOverrides[i];
+                if (entry != null && entry.tile == tile && entry.prefab != null)
+                    return entry.prefab;
+            }
+        }
+
+        return destructiblePrefab;
+    }
 
     [Header("Auto Resolve (Stage Tilemaps)")]
     [SerializeField] private bool autoResolveStageTilemaps = true;
@@ -646,6 +687,40 @@ public class GameManager : MonoBehaviour
         ConfigureLegacyHiddenObjects(destructibleCells);
     }
 
+    public void RegisterSpawnedDestructibles(IEnumerable<Vector3Int> cells)
+    {
+        if (destructibleTilemap == null || cells == null)
+            return;
+        AutoItemDatabase.BuildIfNeeded();
+        var addedCells = new List<Vector3Int>();
+        var unique = new HashSet<Vector3Int>();
+        foreach (Vector3Int cell in cells)
+        {
+            if (!unique.Add(cell) || !destructibleTilemap.HasTile(cell))
+                continue;
+            hiddenObjectSpawnsByCell.Remove(cell);
+            addedCells.Add(cell);
+        }
+        totalDestructibleBlocks += addedCells.Count;
+        if (HasConfiguredHiddenObjectRooms())
+            ConfigureRoomHiddenObjects(addedCells);
+        else
+            ConfigureLegacyHiddenObjects(addedCells);
+    }
+
+    public bool HasUncollectedStageItems()
+    {
+        if (FindObjectsByType<ItemPickup>().Length > 0 || pendingHiddenItemCells.Count > 0)
+            return true;
+        if (destructibleTilemap == null)
+            return false;
+        foreach (var entry in hiddenObjectSpawnsByCell)
+            if (entry.Value != null && entry.Value.GetComponent<ItemPickup>() != null &&
+                destructibleTilemap.HasTile(entry.Key))
+                return true;
+        return false;
+    }
+
     bool HasConfiguredHiddenObjectRooms()
     {
         if (hiddenObjectRooms == null)
@@ -719,6 +794,7 @@ public class GameManager : MonoBehaviour
         TryAssignItem(destructibleCells, ref cursor, ItemType.PowerBomb, powerBombAmount);
         TryAssignItem(destructibleCells, ref cursor, ItemType.RubberBomb, rubberBombAmount);
         TryAssignItem(destructibleCells, ref cursor, ItemType.MagnetBomb, magnetBombAmount);
+        TryAssignItem(destructibleCells, ref cursor, ItemType.SearchBomb, searchBombAmount);
         TryAssignItem(destructibleCells, ref cursor, ItemType.FullFire, fullFireAmount);
         TryAssignItem(destructibleCells, ref cursor, ItemType.BombPass, bombPassAmount);
         TryAssignItem(destructibleCells, ref cursor, ItemType.DestructiblePass, destructiblePassAmount);
@@ -727,6 +803,7 @@ public class GameManager : MonoBehaviour
         if (SaveSystem.GetActiveNormalGameDifficulty() == NormalGameDifficulty.Hard)
             TryAssignItem(destructibleCells, ref cursor, ItemType.OneUp, oneUpAmount);
         TryAssignItem(destructibleCells, ref cursor, ItemType.PowerGlove, powerGloveAmount);
+        TryAssignItem(destructibleCells, ref cursor, ItemType.LineBomb, lineBombAmount);
         TryAssignItem(destructibleCells, ref cursor, ItemType.BlueLouieEgg, blueLouieEggAmount);
         TryAssignItem(destructibleCells, ref cursor, ItemType.BlackLouieEgg, blackLouieEggAmount);
         TryAssignItem(destructibleCells, ref cursor, ItemType.PurpleLouieEgg, purpleLouieEggAmount);
@@ -806,12 +883,14 @@ public class GameManager : MonoBehaviour
             ItemType.PowerBomb => 1,
             ItemType.RubberBomb => 1,
             ItemType.MagnetBomb => 1,
+            ItemType.SearchBomb => 0,
             ItemType.FullFire => 1,
             ItemType.BombPass => 1,
             ItemType.DestructiblePass => 1,
             ItemType.InvincibleSuit => 0,
             ItemType.Heart => 0,
             ItemType.PowerGlove => 3,
+            ItemType.LineBomb => 1,
             ItemType.Skull => 2,
             _ => 0
         };
@@ -864,6 +943,7 @@ public class GameManager : MonoBehaviour
             case ItemType.PowerBomb: powerBombAmount = amount; break;
             case ItemType.RubberBomb: rubberBombAmount = amount; break;
             case ItemType.MagnetBomb: magnetBombAmount = amount; break;
+            case ItemType.SearchBomb: searchBombAmount = amount; break;
             case ItemType.FullFire: fullFireAmount = amount; break;
             case ItemType.BombPass: bombPassAmount = amount; break;
             case ItemType.DestructiblePass: destructiblePassAmount = amount; break;
@@ -871,6 +951,7 @@ public class GameManager : MonoBehaviour
             case ItemType.Heart: heartAmount = amount; break;
             case ItemType.OneUp: oneUpAmount = amount; break;
             case ItemType.PowerGlove: powerGloveAmount = amount; break;
+            case ItemType.LineBomb: lineBombAmount = amount; break;
             case ItemType.BlueLouieEgg: blueLouieEggAmount = amount; break;
             case ItemType.BlackLouieEgg: blackLouieEggAmount = amount; break;
             case ItemType.PurpleLouieEgg: purpleLouieEggAmount = amount; break;
@@ -968,6 +1049,11 @@ public class GameManager : MonoBehaviour
 
     public void EndStage()
     {
+        EndStage(SceneManager.GetActiveScene().name);
+    }
+
+    public void EndStage(string completedStageSceneName)
+    {
         if (endStageTriggered)
             return;
 
@@ -979,12 +1065,12 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        string currentSceneName = SceneManager.GetActiveScene().name;
-
-        CaptureAllPlayersForStageEnd();
+        string currentSceneName = string.IsNullOrEmpty(completedStageSceneName)
+            ? SceneManager.GetActiveScene().name : completedStageSceneName;
+        bool stageWasAlreadyCleared = StageUnlockProgress.IsCleared(currentSceneName);
 
         StageUnlockProgress.UnlockCurrentAndNext(currentSceneName);
-
+        CaptureAllPlayersForStageEnd();
         PlayerPersistentStats.CommitStage();
         SaveFileMenu.SaveCurrentProgressToActiveSlot();
 
@@ -996,9 +1082,10 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        if (!string.IsNullOrEmpty(nextStageSceneName) && nextStageSceneName == "END_SCREEN")
+        if (StageAssets.World3HallChipAssemblyController.IsChipStage(currentSceneName))
         {
-            StartCoroutine(ShowEndingAfterDelayRoutine());
+            StageAssets.World3HallChipAssemblyController.PrepareReturn(currentSceneName, !stageWasAlreadyCleared);
+            StartCoroutine(LoadWorld3HallRoutine());
             return;
         }
 
@@ -1008,7 +1095,31 @@ public class GameManager : MonoBehaviour
             return;
         }
 
+        bool returningFromWorldBoss = IsWorldBossStage(currentSceneName);
+        if (stageWasAlreadyCleared || returningFromWorldBoss)
+        {
+            if (returningFromWorldBoss)
+                WorldMapController.FocusStageOnNextLoad(nextStageSceneName);
+
+            StartCoroutine(LoadWorldMapRoutine());
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(nextStageSceneName) && nextStageSceneName == "END_SCREEN")
+        {
+            StartCoroutine(ShowEndingAfterDelayRoutine());
+            return;
+        }
+
         StartCoroutine(LoadNextStageRoutine());
+    }
+
+    IEnumerator LoadWorld3HallRoutine()
+    {
+        yield return waitNextStageDelay;
+        GamePauseController.ClearPauseFlag();
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(StageAssets.World3HallPortalSelectionController.SceneName);
     }
 
     IEnumerator LoadNextStageRoutine()
@@ -1020,6 +1131,27 @@ public class GameManager : MonoBehaviour
 
         EnsureStage1_2PlayersHaveMinimumExplosionRadius();
         SceneManager.LoadScene(nextStageSceneName);
+    }
+
+    IEnumerator LoadWorldMapRoutine()
+    {
+        yield return waitNextStageDelay;
+
+        GamePauseController.ClearPauseFlag();
+        Time.timeScale = 1f;
+
+        SceneManager.LoadScene(worldMapSceneName);
+    }
+
+    static bool IsWorldBossStage(string sceneName)
+    {
+        for (int i = 0; i < WorldBossStageSceneNames.Length; i++)
+        {
+            if (string.Equals(WorldBossStageSceneNames[i], sceneName, StringComparison.Ordinal))
+                return true;
+        }
+
+        return false;
     }
 
     void EnsureStage1_2PlayersHaveMinimumExplosionRadius()
@@ -1078,8 +1210,8 @@ public class GameManager : MonoBehaviour
         }
 
         if (groundTilemap != null &&
-            groundTile != null &&
-            HasAnyGroundShadowTile())
+            ((groundShadowRules != null && groundShadowRules.Length > 0) ||
+             (groundTile != null && HasAnyGroundShadowTile())))
         {
             BoundsInt bounds = groundTilemap.cellBounds;
             foreach (Vector3Int groundCell in bounds.allPositionsWithin)
@@ -1093,6 +1225,7 @@ public class GameManager : MonoBehaviour
         shadowedDestructibleOriginalTiles.Remove(cell);
         RefreshGroundShadowAt(cell);
         RefreshGroundShadowAt(below);
+        DestructibleDestroyed?.Invoke(cell);
     }
 
     public void OnIndestructiblePlaced(Vector3Int cell)
@@ -1176,6 +1309,9 @@ public class GameManager : MonoBehaviour
 
     void RefreshGroundShadowAt(Vector3Int groundCell)
     {
+        if (TryRefreshGroundShadowRuleAt(groundCell))
+            return;
+
         if (groundTilemap == null ||
             groundTile == null ||
             !HasAnyGroundShadowTile())
@@ -1215,6 +1351,36 @@ public class GameManager : MonoBehaviour
             if (targetGroundTile != null && currentGround != targetGroundTile)
                 groundTilemap.SetTile(groundCell, targetGroundTile);
         }
+    }
+
+    bool TryRefreshGroundShadowRuleAt(Vector3Int cell)
+    {
+        if (groundTilemap == null || groundShadowRules == null)
+            return false;
+
+        TileBase current = groundTilemap.GetTile(cell);
+        Vector3Int above = cell + Vector3Int.up;
+        TileBase destructibleAbove = destructibleTilemap != null ? destructibleTilemap.GetTile(above) : null;
+        bool hasCaster = HasIndestructibleGroundShadowCasterAt(above) ||
+            (destructibleAbove != null && !IsGroundShadowIgnoredTile(destructibleAbove));
+
+        foreach (GroundShadowRule rule in groundShadowRules)
+        {
+            if (rule == null ||
+                rule.normalGroundTile == null || rule.shadowGroundTile == null)
+                continue;
+
+            if (current != rule.normalGroundTile && current != rule.shadowGroundTile)
+                continue;
+
+            TileBase target = hasCaster
+                ? rule.shadowGroundTile : rule.normalGroundTile;
+            if (current != target)
+                groundTilemap.SetTile(cell, target);
+            return true;
+        }
+
+        return false;
     }
 
     void ResolveGroundTileShadowHandlers()
@@ -1805,6 +1971,9 @@ public class GameManager : MonoBehaviour
         if (state.HasPowerGlove)
             results.Add(ItemType.PowerGlove);
 
+        if (state.HasLineBomb)
+            results.Add(ItemType.LineBomb);
+
         if (state.CanPassDestructibles)
             results.Add(ItemType.DestructiblePass);
 
@@ -1873,6 +2042,8 @@ public class GameManager : MonoBehaviour
             return ItemType.RubberBomb;
         if (state.HasMagnetBomb)
             return ItemType.MagnetBomb;
+        if (state.HasSearchBomb)
+            return ItemType.SearchBomb;
 
         return ItemType.LandMine;
     }

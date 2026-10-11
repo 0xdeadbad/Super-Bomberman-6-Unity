@@ -24,12 +24,16 @@ public class StageIntroTransition : MonoBehaviour
     private readonly float startSfxVolume = 0.5f;
 
     [Header("Stage Intro")]
+    [SerializeField] private bool showStagePresentation = true;
     public StageLabel stageLabel;
     public int world = 1;
     public int stageNumber = 1;
 
     [Header("Gameplay Root")]
     public GameObject gameplayRoot;
+
+    [Tooltip("Keep player controls disabled after the intro for scenes with scripted selection and movement.")]
+    [SerializeField] private bool keepPlayerInputLockedAfterIntro;
 
     [Header("Only Stage_1-7")]
     public string stage17SceneName = "Stage_1-7";
@@ -330,6 +334,9 @@ public class StageIntroTransition : MonoBehaviour
 
             ApplyLouieAndEggsIntroVisibility(m, visible: true);
             m.EnableExclusiveFromState();
+            if (m.gameObject.scene.name == StageAssets.World3HallPortalSelectionController.SceneName &&
+                m.CompareTag("Player"))
+                m.ForceMountedUpExclusive();
         }
 
         yield return null;
@@ -350,6 +357,15 @@ public class StageIntroTransition : MonoBehaviour
                 TryPlayIntroMusic();
 
             if (isBattleMode)
+            {
+                GamePauseController.ClearPauseFlag();
+                Time.timeScale = 1f;
+                EnableGameplay();
+                TryStartDefaultMusicNormalFlow();
+                yield break;
+            }
+
+            if (!showStagePresentation)
             {
                 GamePauseController.ClearPauseFlag();
                 Time.timeScale = 1f;
@@ -401,6 +417,15 @@ public class StageIntroTransition : MonoBehaviour
         fadeImage.gameObject.SetActive(false);
 
         if (isBattleMode)
+        {
+            GamePauseController.ClearPauseFlag();
+            Time.timeScale = 1f;
+            EnableGameplay();
+            TryStartDefaultMusicNormalFlow();
+            yield break;
+        }
+
+        if (!showStagePresentation)
         {
             GamePauseController.ClearPauseFlag();
             Time.timeScale = 1f;
@@ -536,12 +561,12 @@ public class StageIntroTransition : MonoBehaviour
                     m.Rigidbody.simulated = true;
             }
 
-            m.SetInputLocked(false, true);
+            m.SetInputLocked(isPlayer && keepPlayerInputLockedAfterIntro, true);
             m.enabled = true;
         }
 
         foreach (var b in bombControllers)
-            if (b) b.enabled = true;
+            if (b) b.enabled = !keepPlayerInputLockedAfterIntro;
 
         for (int i = 0; i < manualDismounts.Length; i++)
         {
@@ -552,7 +577,7 @@ public class StageIntroTransition : MonoBehaviour
             if (!isPlayer)
                 continue;
 
-            d.enabled = true;
+            d.enabled = !keepPlayerInputLockedAfterIntro;
         }
 
         IntroRunning = false;
@@ -694,7 +719,7 @@ public class StageIntroTransition : MonoBehaviour
 
     private void TryPlayIntroMusic()
     {
-        if (introMusic == null)
+        if (!showStagePresentation || introMusic == null)
             return;
 
         if (GameMusicController.Instance == null)

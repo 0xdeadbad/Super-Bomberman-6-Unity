@@ -266,7 +266,7 @@ namespace Assets.Scripts.Netcode
         // NetworkIdentity) são preservados.
         static void DestroyPreExistingLocalPlayers()
         {
-            var ids = FindObjectsByType<PlayerIdentity>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var ids = FindObjectsByType<PlayerIdentity>(FindObjectsInactive.Include);
             for (int i = 0; i < ids.Length; i++)
             {
                 if (ids[i] == null)

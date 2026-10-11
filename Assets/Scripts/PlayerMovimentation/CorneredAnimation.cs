@@ -35,6 +35,7 @@ public sealed class CorneredAnimation : MonoBehaviour
     private AudioSource audioSource;
 
     private bool isPlaying;
+    public bool IsPlaying => isPlaying;
     private bool hasBombInBlock;
     private float lastSfxTime = -999f;
     private float lastInputTime;
@@ -103,6 +104,13 @@ public sealed class CorneredAnimation : MonoBehaviour
         StopCornered();
     }
 
+    public void CancelForExternalOverride()
+    {
+        if (isPlaying)
+            StopCornered();
+        lastInputTime = Time.time;
+    }
+
     private void Update()
     {
         // Online: cliente puro não simula animação (a saída vem replicada).
@@ -116,7 +124,11 @@ public sealed class CorneredAnimation : MonoBehaviour
         if (movement == null)
             return;
 
-        if (movement.InputLocked || movement.isDead || movement.IsEndingStage || GamePauseController.IsPaused)
+        if (GamePauseController.IsPaused)
+            return;
+
+        if (movement.InputLocked || movement.isDead || movement.IsEndingStage ||
+            (TryGetComponent<StunReceiver>(out var stun) && stun.IsStunned))
         {
             if (isPlaying)
                 StopCornered();
@@ -215,7 +227,7 @@ public sealed class CorneredAnimation : MonoBehaviour
         if (input == null)
             return false;
 
-        return input.HasAnyHeldInput(movement.PlayerId);
+        return InactivityAnimation.HasPoseCancelInput(movement.PlayerId);
     }
 
     private bool IsCornered(out bool foundBomb)
@@ -461,6 +473,9 @@ public sealed class CorneredAnimation : MonoBehaviour
 
         if (!hasBombInBlock)
             return;
+
+        if (TryGetComponent<InactivityAnimation>(out var inactivity))
+            inactivity.CancelForExternalOverride();
 
         activeCorneredRenderer = GetCorneredRenderer();
 

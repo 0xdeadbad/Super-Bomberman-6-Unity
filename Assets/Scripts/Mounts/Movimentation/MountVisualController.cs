@@ -295,6 +295,7 @@ public class MountVisualController : MonoBehaviour
         if (louieInactivityEmoteLoopAlt != null)
             SetRendererBranchEnabled(louieInactivityEmoteLoopAlt, false);
 
+        SetRendererBranchEnabled(activeLouieInactivityRenderer, false);
         activeLouieInactivityRenderer = null;
 
         if (owner == null)
@@ -379,6 +380,15 @@ public class MountVisualController : MonoBehaviour
             louieEndStage.animationTime = totalTime / frameCount;
 
         return true;
+    }
+
+    public void CancelResultPose()
+    {
+        playingEndStage = false;
+        playingCornered = false;
+        SetRendererBranchEnabled(louieEndStage, false);
+        SetRendererBranchEnabled(louieCornered, false);
+        ApplyDirection(Vector2.down, true);
     }
 
     public void ForceIdleUp()

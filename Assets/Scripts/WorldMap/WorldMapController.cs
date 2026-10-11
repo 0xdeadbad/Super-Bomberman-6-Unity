@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -6,6 +6,8 @@ using UnityEngine.UI;
 
 public class WorldMapController : MonoBehaviour
 {
+    static string focusedStageSceneName;
+
     [System.Serializable]
     public class StageNode
     {
@@ -22,6 +24,8 @@ public class WorldMapController : MonoBehaviour
     {
         public string worldName = "World 1";
         public GameObject root;
+        public GameObject visualsRoot;
+        public PixelPerfectScrollingSpriteRenderer backgroundScroller;
         public List<StageNode> nodes = new List<StageNode>();
         public int defaultNodeIndex = 0;
 
@@ -159,6 +163,11 @@ public class WorldMapController : MonoBehaviour
 
     AudioClip lastPlayedWorldMusic;
     AudioClip lastPlayedWorldMusicLoopClip;
+
+    public static void FocusStageOnNextLoad(string sceneName)
+    {
+        focusedStageSceneName = sceneName;
+    }
     float lastPlayedWorldMusicVolume;
     bool lastPlayedWorldMusicLoop;
 
@@ -201,6 +210,13 @@ public class WorldMapController : MonoBehaviour
         ApplyUnlockedStagesFromProgress();
 
         currentWorldIndex = GetInitialWorldIndexFromProgress(out int initialNodeIndex);
+
+        if (TryConsumeFocusedStage(out int focusedWorldIndex, out int focusedNodeIndex))
+        {
+            currentWorldIndex = focusedWorldIndex;
+            initialNodeIndex = focusedNodeIndex;
+        }
+
         ApplyCurrentWorldCameraPosition();
 
         Canvas.ForceUpdateCanvases();
@@ -380,13 +396,21 @@ public class WorldMapController : MonoBehaviour
         if (node == null)
             return;
 
-        if (!node.unlocked || string.IsNullOrEmpty(node.sceneName))
+        bool useWorld3Hall = node.sceneName != null && node.sceneName.StartsWith("Stage_3-", System.StringComparison.Ordinal);
+        string destinationScene = useWorld3Hall
+            ? StageAssets.World3HallPortalSelectionController.SceneName
+            : node.sceneName;
+
+        if (!node.unlocked || !IsStageSceneAvailable(node.sceneName) || !IsStageSceneAvailable(destinationScene))
         {
             PlaySfx(deniedSfx, deniedSfxVolume);
             return;
         }
 
-        StartCoroutine(ConfirmStageRoutine(node.sceneName));
+        if (useWorld3Hall)
+            StageAssets.World3HallPortalSelectionController.FocusStageOnNextLoad(node.sceneName);
+
+        StartCoroutine(ConfirmStageRoutine(destinationScene));
     }
 
     IEnumerator ConfirmStageRoutine(string sceneName)
@@ -405,9 +429,6 @@ public class WorldMapController : MonoBehaviour
             yield return FadeOutRoutine(selectedTransitionDuration);
         else
             yield return new WaitForSecondsRealtime(selectedTransitionDuration);
-
-        PlayerPersistentStats.ResetGameplayPersistenceToBaseValues();
-        ApplyInitialExplosionRadiusForStage(sceneName);
 
         StagePreIntroPlayersWalk.SkipOnNextLoad();
         AsyncOperation loadOperation = SceneManager.LoadSceneAsync(sceneName);
@@ -430,31 +451,14 @@ public class WorldMapController : MonoBehaviour
             yield return null;
     }
 
-    bool IsStage1_1OnlyUnlockedStage()
+    static bool IsStageSceneAvailable(string sceneName)
     {
-        if (!StageUnlockProgress.IsUnlocked("Stage_1-1"))
+        if (string.IsNullOrWhiteSpace(sceneName))
             return false;
-
-        return !StageUnlockProgress.IsUnlocked("Stage_1-2");
-    }
-
-    int GetInitialExplosionRadiusForStage(string sceneName)
-    {
-        if (sceneName == "Stage_1-1")
-            return IsStage1_1OnlyUnlockedStage() ? 1 : 2;
-
-        return 2;
-    }
-
-    void ApplyInitialExplosionRadiusForStage(string sceneName)
-    {
-        int initialRadius = GetInitialExplosionRadiusForStage(sceneName);
-
-        for (int playerId = 1; playerId <= 4; playerId++)
-        {
-            var state = PlayerPersistentStats.Get(playerId);
-            state.ExplosionRadius = initialRadius;
-        }
+        // 3-7 is a duel inside the hall; 3-8 is selected from its completed chip.
+        if (sceneName == "Stage_3-7" || sceneName == "Stage_3-8")
+            return Application.CanStreamedLevelBeLoaded(StageAssets.World3HallPortalSelectionController.SceneName);
+        return Application.CanStreamedLevelBeLoaded(sceneName);
     }
 
     IEnumerator LoadSceneRoutine(string sceneName, AudioClip sfxClip = null, float sfxVolume = 1f)
@@ -481,6 +485,15 @@ public class WorldMapController : MonoBehaviour
         {
             if (worlds[i].root != null)
                 worlds[i].root.SetActive(i == currentWorldIndex);
+
+            if (i != currentWorldIndex && worlds[i].backgroundScroller != null)
+                worlds[i].backgroundScroller.enabled = false;
+
+            if (worlds[i].visualsRoot != null)
+                worlds[i].visualsRoot.SetActive(i == currentWorldIndex);
+
+            if (i == currentWorldIndex && worlds[i].backgroundScroller != null)
+                worlds[i].backgroundScroller.enabled = true;
         }
     }
 
@@ -694,7 +707,7 @@ public class WorldMapController : MonoBehaviour
         if (node == null || node.runtimeIcon == null)
             return;
 
-        bool isUnlocked = StageUnlockProgress.IsUnlocked(node.sceneName);
+        bool isUnlocked = StageUnlockProgress.IsUnlocked(node.sceneName) && IsStageSceneAvailable(node.sceneName);
         bool isCleared = StageUnlockProgress.IsCleared(node.sceneName);
 
         Sprite sprite;
@@ -1364,7 +1377,7 @@ public class WorldMapController : MonoBehaviour
                 if (node == null)
                     continue;
 
-                node.unlocked = StageUnlockProgress.IsUnlocked(node.sceneName);
+                node.unlocked = StageUnlockProgress.IsUnlocked(node.sceneName) && IsStageSceneAvailable(node.sceneName);
             }
         }
     }
@@ -1430,6 +1443,41 @@ public class WorldMapController : MonoBehaviour
         return 0;
     }
 
+    bool TryConsumeFocusedStage(out int worldIndex, out int nodeIndex)
+    {
+        string sceneName = focusedStageSceneName;
+        focusedStageSceneName = null;
+
+        worldIndex = 0;
+        nodeIndex = 0;
+
+        if (string.IsNullOrWhiteSpace(sceneName) || worlds == null)
+            return false;
+
+        for (int world = 0; world < worlds.Count; world++)
+        {
+            var worldData = worlds[world];
+            if (worldData == null || worldData.nodes == null)
+                continue;
+
+            for (int node = 0; node < worldData.nodes.Count; node++)
+            {
+                var stage = worldData.nodes[node];
+                if (stage == null || !string.Equals(stage.sceneName, sceneName, System.StringComparison.Ordinal))
+                    continue;
+
+                if (!StageUnlockProgress.IsUnlocked(sceneName) || !IsStageSceneAvailable(sceneName))
+                    return false;
+
+                worldIndex = world;
+                nodeIndex = node;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     bool IsWorldFullyCleared(int worldIndex)
     {
         if (worldIndex < 0 || worldIndex >= worlds.Count)
@@ -1473,7 +1521,7 @@ public class WorldMapController : MonoBehaviour
             if (node == null || string.IsNullOrWhiteSpace(node.sceneName))
                 continue;
 
-            if (StageUnlockProgress.IsUnlocked(node.sceneName))
+            if (StageUnlockProgress.IsUnlocked(node.sceneName) && IsStageSceneAvailable(node.sceneName))
                 lastUnlocked = i;
         }
 

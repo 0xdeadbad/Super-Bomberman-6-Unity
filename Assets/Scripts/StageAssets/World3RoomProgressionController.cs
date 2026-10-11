@@ -12,14 +12,16 @@ namespace StageAssets
         private sealed class Room
         {
             public string name = "Room";
-            [Tooltip("This single Room Bounds collider defines both player presence and which CoreMechanisms belong to the room.")]
-            public Collider2D roomBounds;
+            [Tooltip("Defines player presence and is the fallback for CoreMechanisms when no core roots are assigned.")]
+            public Collider2D roomBounds = null;
             [Tooltip("Optional roots. Leave empty to automatically use every enemy inside Player Area.")]
-            public GameObject[] enemyRoots;
+            public GameObject[] enemyRoots = Array.Empty<GameObject>();
+            [Tooltip("Optional roots that own this room's CoreMechanisms. Use these when the room bounds are only for player presence.")]
+            public GameObject[] coreRoots = Array.Empty<GameObject>();
             [Header("Release after every core in this room is destroyed")]
-            public World3BambooExitBlocker bambooToOpen;
-            public World3GateOpenedSequenceController bubbleChipToRelease;
-            public GameObject[] objectsToEnable;
+            public ExitBlocker bambooToOpen = null;
+            public World3GateOpenedSequenceController bubbleChipToRelease = null;
+            public GameObject[] objectsToEnable = Array.Empty<GameObject>();
 
             [NonSerialized] public readonly HashSet<Vector3Int> remainingCores = new();
             [NonSerialized] public readonly HashSet<CoreMechanismsDestructible> remainingSceneCores = new();
@@ -30,6 +32,20 @@ namespace StageAssets
         [SerializeField] private Room[] rooms;
 
         private readonly Dictionary<EnemyMovementController, bool> enemyOriginalStates = new();
+        private bool enemyRoomLifecycleInitialized;
+        private bool stageAlreadyCleared;
+
+        /// <summary>
+        /// Suspends enemy GameObjects from the room being left and wakes those
+        /// in the destination room while the transition fade is covering it.
+        /// This applies to every scene that uses this room progression setup.
+        /// </summary>
+        public static void PrepareEnemyRoomsForTransition(Vector2 sourcePosition, Vector2 destinationPosition)
+        {
+            World3RoomProgressionController controller =
+                FindAnyObjectByType<World3RoomProgressionController>();
+            controller?.PrepareEnemyRoomsForTransitionInternal(sourcePosition, destinationPosition);
+        }
 
         /// <summary>
         /// Returns the authored room bounds that contain the supplied position.
@@ -57,11 +73,38 @@ namespace StageAssets
             return null;
         }
 
+        /// <summary>Returns an authored room bound by its inspector name.</summary>
+        public static Collider2D FindRoomBounds(string roomName)
+        {
+            if (string.IsNullOrWhiteSpace(roomName))
+                return null;
+
+            World3RoomProgressionController controller =
+                FindAnyObjectByType<World3RoomProgressionController>();
+
+            if (controller == null || controller.rooms == null)
+                return null;
+
+            for (int i = 0; i < controller.rooms.Length; i++)
+            {
+                Room room = controller.rooms[i];
+                if (room != null && string.Equals(room.name, roomName, StringComparison.OrdinalIgnoreCase))
+                    return room.roomBounds;
+            }
+
+            return null;
+        }
+
         private void Awake()
         {
-            ScanRoomCores();
             CacheEnemies();
-            RefreshEnemyRooms();
+        }
+
+        private void Start()
+        {
+            stageAlreadyCleared = StageUnlockProgress.IsCleared(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+            Physics2D.SyncTransforms();
+            ScanRoomCores();
         }
 
         private void OnEnable()
@@ -78,12 +121,49 @@ namespace StageAssets
             CoreMechanismsDestructible.CoreMechanismDestroyed -= HandleSceneCoreDestroyed;
         }
 
-        private void Update() => RefreshEnemyRooms();
+        private void Update()
+        {
+            if (!enemyRoomLifecycleInitialized)
+                TryInitializeEnemyRoomLifecycle();
+
+            if (!stageAlreadyCleared || rooms == null || GamePauseController.IsPaused || Time.timeScale == 0f ||
+                (StageIntroTransition.Instance != null && StageIntroTransition.Instance.IntroRunning))
+                return;
+
+            foreach (Room room in rooms)
+            {
+                if (room == null || room.released || room.roomBounds == null || !HasGameplayPlayer(room.roomBounds))
+                    continue;
+
+                CoreMechanismsDestructible completionCore = null;
+                foreach (CoreMechanismsDestructible core in new List<CoreMechanismsDestructible>(room.remainingSceneCores))
+                {
+                    if (core == null)
+                        continue;
+                    completionCore = core;
+                    core.PlayDeath();
+                }
+                CoreMechanismsTileHandler tileHandler = coreTilemap.GetComponent<CoreMechanismsTileHandler>();
+                foreach (Vector3Int cell in room.remainingCores)
+                {
+                    if (tileHandler != null)
+                        completionCore = tileHandler.DestroyForClearedStage(coreTilemap, cell) ?? completionCore;
+                    else
+                        coreTilemap.SetTile(cell, null);
+                }
+                room.remainingSceneCores.Clear();
+                room.remainingCores.Clear();
+                if (!room.released)
+                    Release(room, completionCore);
+            }
+        }
 
         private void ScanRoomCores()
         {
             if (coreTilemap == null || rooms == null)
+            {
                 return;
+            }
 
             BoundsInt bounds = coreTilemap.cellBounds;
             foreach (Room room in rooms)
@@ -113,11 +193,20 @@ namespace StageAssets
 
                 foreach (Room room in rooms)
                 {
-                    if (room != null && room.roomBounds != null && room.roomBounds.OverlapPoint(core.transform.position))
+                    if (IsCoreInRoom(core, room))
                         room.remainingSceneCores.Add(core);
                 }
             }
 
+        }
+
+        private static bool HasGameplayPlayer(Collider2D bounds)
+        {
+            foreach (MovementController player in FindObjectsByType<MovementController>())
+                if (player.CompareTag("Player") && !player.isDead && player.enabled && !player.InputLocked &&
+                    bounds.OverlapPoint(BattleMode7PortalController.GetRoomPresencePosition(player)))
+                    return true;
+            return false;
         }
 
         private void HandleCoreDestroyed(Tilemap tilemap, Vector3Int cell)
@@ -127,7 +216,10 @@ namespace StageAssets
 
             foreach (Room room in rooms)
             {
-                if (room == null || room.released || !room.remainingCores.Remove(cell))
+                if (room == null || room.released)
+                    continue;
+
+                if (!room.remainingCores.Remove(cell))
                     continue;
 
                 if (room.remainingCores.Count == 0 && room.remainingSceneCores.Count == 0)
@@ -142,8 +234,13 @@ namespace StageAssets
 
             foreach (Room room in rooms)
             {
-                if (room == null || room.released || !room.remainingSceneCores.Remove(core))
+                if (room == null || room.released)
                     continue;
+
+                if (!room.remainingSceneCores.Remove(core))
+                {
+                    continue;
+                }
 
                 if (room.remainingSceneCores.Count == 0 && room.remainingCores.Count == 0)
                     Release(room, core);
@@ -174,11 +271,12 @@ namespace StageAssets
                     enemyOriginalStates[enemies[i]] = enemies[i].enabled;
         }
 
-        private void RefreshEnemyRooms()
+        private void TryInitializeEnemyRoomLifecycle()
         {
             if (rooms == null)
                 return;
 
+            bool anyRoomHasPlayer = false;
             foreach (Room room in rooms)
             {
                 Collider2D bounds = room != null ? room.roomBounds : null;
@@ -186,15 +284,76 @@ namespace StageAssets
                     continue;
 
                 bool roomHasPlayer = IsRoomOccupied(bounds);
-                foreach (EnemyMovementController enemy in GetRoomEnemies(room, bounds))
-                {
-                    if (enemy == null || !enemyOriginalStates.TryGetValue(enemy, out bool originallyEnabled))
-                        continue;
+                anyRoomHasPlayer |= roomHasPlayer;
+                SetRoomEnemiesActive(room, bounds, roomHasPlayer);
+            }
 
-                    enemy.enabled = originallyEnabled && roomHasPlayer;
-                    if (!roomHasPlayer && enemy.TryGetComponent(out Rigidbody2D body))
-                        body.linearVelocity = Vector2.zero;
-                }
+            // Player spawning can occur after this controller's Awake/Start,
+            // so keep checking until a player reaches an authored room.
+            enemyRoomLifecycleInitialized = anyRoomHasPlayer;
+        }
+
+        private void PrepareEnemyRoomsForTransitionInternal(Vector2 sourcePosition, Vector2 destinationPosition)
+        {
+            Room sourceRoom = FindRoomContaining(sourcePosition);
+            Room destinationRoom = FindRoomContaining(destinationPosition);
+            if (sourceRoom == null && destinationRoom == null)
+                return;
+
+            if (sourceRoom != null)
+                RemoveRoomEnemies(sourceRoom, sourceRoom.roomBounds);
+
+            if (destinationRoom != null)
+                SetRoomEnemiesActive(destinationRoom, destinationRoom.roomBounds, true);
+
+            enemyRoomLifecycleInitialized = true;
+        }
+
+        private Room FindRoomContaining(Vector2 position)
+        {
+            if (rooms == null)
+                return null;
+
+            for (int i = 0; i < rooms.Length; i++)
+            {
+                Room room = rooms[i];
+                if (room?.roomBounds != null && room.roomBounds.OverlapPoint(position))
+                    return room;
+            }
+
+            return null;
+        }
+
+        private void SetRoomEnemiesActive(Room room, Collider2D bounds, bool active)
+        {
+            foreach (EnemyMovementController enemy in GetRoomEnemies(room, bounds))
+            {
+                if (enemy == null || !enemyOriginalStates.ContainsKey(enemy))
+                    continue;
+
+                if (!active && enemy.TryGetComponent(out Rigidbody2D body))
+                    body.linearVelocity = Vector2.zero;
+
+                if (enemy.gameObject.activeSelf != active)
+                    enemy.gameObject.SetActive(active);
+            }
+        }
+
+        private void RemoveRoomEnemies(Room room, Collider2D bounds)
+        {
+            GameManager gameManager = GameManager.Instance != null
+                ? GameManager.Instance
+                : FindAnyObjectByType<GameManager>();
+
+            foreach (EnemyMovementController enemy in GetRoomEnemies(room, bounds))
+            {
+                if (enemy == null || !enemyOriginalStates.ContainsKey(enemy))
+                    continue;
+
+                if (enemy.TryGetComponent(out CharacterHealth health) && health.life > 0)
+                    gameManager?.NotifyEnemyDied();
+
+                Destroy(enemy.gameObject);
             }
         }
 
@@ -225,7 +384,8 @@ namespace StageAssets
             for (int i = 0; i < players.Length; i++)
             {
                 MovementController player = players[i];
-                if (player != null && !player.isDead && player.CompareTag("Player") && area.OverlapPoint(player.transform.position))
+                if (player != null && !player.isDead && player.CompareTag("Player") &&
+                    area.OverlapPoint(BattleMode7PortalController.GetRoomPresencePosition(player)))
                     return true;
             }
             return false;
@@ -235,6 +395,26 @@ namespace StageAssets
         {
             return tile != null && !string.IsNullOrWhiteSpace(tile.name) &&
                    tile.name.IndexOf("CoreMechanism", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static bool IsCoreInRoom(CoreMechanismsDestructible core, Room room)
+        {
+            if (core == null || room == null)
+                return false;
+
+            if (room.coreRoots != null && room.coreRoots.Length > 0)
+            {
+                for (int i = 0; i < room.coreRoots.Length; i++)
+                {
+                    GameObject root = room.coreRoots[i];
+                    if (root != null && core.transform.IsChildOf(root.transform))
+                        return true;
+                }
+
+                return false;
+            }
+
+            return room.roomBounds != null && room.roomBounds.OverlapPoint(core.transform.position);
         }
 
     }

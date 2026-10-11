@@ -6,16 +6,20 @@ using UnityEngine.UI;
 public sealed class StageBlackout : MonoBehaviour
 {
     public static StageBlackout Instance { get; private set; }
+    public WorldBlackoutRenderer ActiveWorldOverlay => _active ? worldOverlay : null;
 
     private const int ShaderMaxSpotlights = 36;
 
     [Header("UI")]
     [SerializeField] private Image blackoutImage;
+    [Tooltip("Optional world-space output, allowing sprites to sort above the darkness.")]
+    [SerializeField] private WorldBlackoutRenderer worldOverlay;
 
     [Header("Target Stage")]
     [SerializeField] private bool onlyForWorldStage = true;
     [SerializeField] private int targetWorld = 2;
     [SerializeField] private int targetStage = 5;
+    [SerializeField] private bool startActive = true;
 
     [Header("Blackout")]
     [Range(0f, 1f)]
@@ -27,6 +31,7 @@ public sealed class StageBlackout : MonoBehaviour
     [SerializeField, Min(0f)] private float explosionSpotlightSoftness = 0.01f;
     [SerializeField, Min(0f)] private float extraTilesAroundExplosion = 0.1f;
     [SerializeField, Min(1)] private int maxExplosionSpotlights = 36;
+    [SerializeField] private bool enableExplosionSpotlights = true;
 
     private static readonly int IdEllipseX = Shader.PropertyToID("_EllipseX");
     private static readonly int IdEllipseY = Shader.PropertyToID("_EllipseY");
@@ -42,7 +47,6 @@ public sealed class StageBlackout : MonoBehaviour
 
     private sealed class ExplosionSpotlightData
     {
-        public int Id;
         public Transform Transform;
         public Vector2 LastKnownWorldPosition;
         public Vector2 HalfSizeInTiles;
@@ -68,18 +72,19 @@ public sealed class StageBlackout : MonoBehaviour
     Camera _worldCamera;
 
     bool _spotlightsDirty;
+    Coroutine _timedBlackoutRoutine;
 
     void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
 
-        if (!blackoutImage) { enabled = false; return; }
+        if (!blackoutImage && !worldOverlay) { enabled = false; return; }
 
         maxExplosionSpotlights = Mathf.Clamp(maxExplosionSpotlights, 1, ShaderMaxSpotlights);
 
-        _blackoutRect = blackoutImage.rectTransform;
-        _canvas = blackoutImage.canvas;
+        _blackoutRect = blackoutImage != null ? blackoutImage.rectTransform : null;
+        _canvas = blackoutImage != null ? blackoutImage.canvas : null;
 
         if (_canvas != null)
         {
@@ -90,15 +95,16 @@ public sealed class StageBlackout : MonoBehaviour
 
         _worldCamera = Camera.main;
 
-        _originalMat = blackoutImage.material;
+        _originalMat = worldOverlay != null ? worldOverlay.SourceMaterial : blackoutImage.material;
         if (_originalMat != null)
         {
             _matInstance = Instantiate(_originalMat);
-            blackoutImage.material = _matInstance;
+            if (worldOverlay != null) worldOverlay.Initialize(_matInstance);
+            else blackoutImage.material = _matInstance;
         }
 
-        blackoutImage.raycastTarget = false;
-        blackoutImage.gameObject.SetActive(false);
+        if (blackoutImage != null) blackoutImage.raycastTarget = false;
+        SetOutputVisible(false);
 
         _currentA = 0f;
         _targetA = Mathf.Clamp01(blackoutAlpha);
@@ -121,9 +127,15 @@ public sealed class StageBlackout : MonoBehaviour
 
     void Start()
     {
+        if (!startActive)
+        {
+            SetBlackoutActive(false);
+            return;
+        }
+
         if (onlyForWorldStage && !IsTargetStage())
         {
-            if (blackoutImage != null) blackoutImage.gameObject.SetActive(false);
+            SetOutputVisible(false);
             enabled = false;
             return;
         }
@@ -154,11 +166,11 @@ public sealed class StageBlackout : MonoBehaviour
 
     public void SetBlackoutActive(bool active)
     {
-        if (blackoutImage == null) return;
+        if (blackoutImage == null && worldOverlay == null) return;
 
         if (onlyForWorldStage && !IsTargetStage())
         {
-            blackoutImage.gameObject.SetActive(false);
+            SetOutputVisible(false);
             _active = false;
             return;
         }
@@ -170,8 +182,8 @@ public sealed class StageBlackout : MonoBehaviour
 
             if (_worldCamera == null) _worldCamera = Camera.main;
 
-            blackoutImage.material = _matInstance;
-            blackoutImage.gameObject.SetActive(true);
+            if (blackoutImage != null) blackoutImage.material = _matInstance;
+            SetOutputVisible(true);
             _active = true;
             _targetA = Mathf.Clamp01(blackoutAlpha);
 
@@ -200,8 +212,38 @@ public sealed class StageBlackout : MonoBehaviour
             ClearExplosionSpotlights();
         }
 
-        blackoutImage.material = null;
-        blackoutImage.gameObject.SetActive(false);
+        if (blackoutImage != null) blackoutImage.material = null;
+        SetOutputVisible(false);
+    }
+
+    public void StartOrRenewTimedBlackout(float durationSeconds)
+    {
+        if (_timedBlackoutRoutine != null)
+            StopCoroutine(_timedBlackoutRoutine);
+
+        _timedBlackoutRoutine = StartCoroutine(TimedBlackoutRoutine(Mathf.Max(0.01f, durationSeconds)));
+    }
+
+    private System.Collections.IEnumerator TimedBlackoutRoutine(float durationSeconds)
+    {
+        SetBlackoutActive(true);
+        yield return new WaitForSeconds(durationSeconds);
+        SetBlackoutActive(false);
+        _timedBlackoutRoutine = null;
+    }
+
+    public float GetExplosionLightReach(int reach, int indestructibleStopDistance)
+    {
+        // Preserve the legacy UI mask. This changes only light geometry, never
+        // explosion propagation, damage, chain reactions or tile handlers.
+        if (worldOverlay == null) return reach;
+        if (indestructibleStopDistance > 0)
+        {
+            // The hard pixel edge reaches into the blocking tile by the authored padding.
+            return Mathf.Max(0.01f, indestructibleStopDistance -
+                extraTilesAroundExplosion);
+        }
+        return reach > 0 ? reach + 0.5f : 0f;
     }
 
     public void RegisterExplosionSpotlight(int id, Vector2 worldPosition, Vector2 halfSizeInTiles)
@@ -211,11 +253,10 @@ public sealed class StageBlackout : MonoBehaviour
 
     public void RegisterExplosionSpotlight(int id, Transform t, Vector2 worldPosition, Vector2 halfSizeInTiles)
     {
-        if (!_active || _matInstance == null) return;
+        if (!enableExplosionSpotlights || !_active || _matInstance == null) return;
 
         _activeExplosionSpotlights[id] = new ExplosionSpotlightData
         {
-            Id = id,
             Transform = t,
             LastKnownWorldPosition = worldPosition,
             HalfSizeInTiles = new Vector2(
@@ -262,6 +303,28 @@ public sealed class StageBlackout : MonoBehaviour
     void FlushSpotlightsToShader()
     {
         if (_matInstance == null) return;
+
+        if (worldOverlay != null)
+        {
+            int worldCount = 0;
+            foreach (var data in _activeExplosionSpotlights.Values)
+            {
+                if (data.Intensity <= 0f) continue;
+                if (worldCount >= maxExplosionSpotlights) break;
+                Vector2 center = data.LastKnownWorldPosition;
+                _spotlightCentersCache[worldCount] = new Vector4(center.x, center.y, 0f, 0f);
+                _spotlightHalfSizeCache[worldCount] = new Vector4(
+                    (data.HalfSizeInTiles.x + extraTilesAroundExplosion) * tileWorldSize,
+                    (data.HalfSizeInTiles.y + extraTilesAroundExplosion) * tileWorldSize, 0f, 0f);
+                _spotlightIntensityCache[worldCount] = data.Intensity;
+                worldCount++;
+            }
+            _matInstance.SetInt(IdSpotlightCount, worldCount);
+            _matInstance.SetVectorArray(IdSpotlightCenters, _spotlightCentersCache);
+            _matInstance.SetVectorArray(IdSpotlightHalfSize, _spotlightHalfSizeCache);
+            _matInstance.SetFloatArray(IdSpotlightIntensity, _spotlightIntensityCache);
+            return;
+        }
 
         Camera worldCam = _worldCamera != null ? _worldCamera : (_worldCamera = Camera.main);
         if (worldCam == null || _blackoutRect == null)
@@ -352,17 +415,34 @@ public sealed class StageBlackout : MonoBehaviour
         var scene = SceneManager.GetActiveScene();
         if (!scene.IsValid()) return false;
         string n = scene.name;
-        return n.Contains("2-5") || n.Contains("2_5");
+        return n.Contains($"{targetWorld}-{targetStage}") || n.Contains($"{targetWorld}_{targetStage}");
     }
 
     void ApplyFullBlackout(float a)
     {
         if (_matInstance == null) return;
+        if (worldOverlay != null)
+        {
+            _matInstance.SetColor(IdColor, new Color(0f, 0f, 0f, Mathf.Clamp01(a)));
+            return;
+        }
         _matInstance.SetFloat(IdEllipseX, 1f);
         _matInstance.SetFloat(IdEllipseY, 1f);
         _matInstance.SetVector(IdCenter, new Vector4(-10f, -10f, 0f, 0f));
         _matInstance.SetFloat(IdRadius, 0.001f);
         _matInstance.SetFloat(IdSoftness, 0.001f);
         _matInstance.SetColor(IdColor, new Color(0f, 0f, 0f, Mathf.Clamp01(a)));
+    }
+
+    void SetOutputVisible(bool visible)
+    {
+        if (worldOverlay != null) worldOverlay.SetVisible(visible);
+        else if (blackoutImage != null) blackoutImage.gameObject.SetActive(visible);
+    }
+
+    void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
+        if (_matInstance != null) Destroy(_matInstance);
     }
 }

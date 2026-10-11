@@ -2,10 +2,23 @@ using UnityEngine;
 using UnityEngine.Audio;
 using System.Collections;
 using UnityEngine.SceneManagement;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 [RequireComponent(typeof(AudioSource))]
 public class GameMusicController : MonoBehaviour
 {
+    [System.Serializable]
+    public struct RoomMusic
+    {
+        [Tooltip("Identifier used by room transitions to select this music.")]
+        public string roomId;
+        public AudioClip music;
+        public AudioClip musicLoop;
+        [Range(0f, 1f)] public float volume;
+    }
+
     const string BattleModeMusicResourcesPath = "Sounds/BattleModeMusics";
 
     static readonly BattleModeMusicConfig[] BattleModeMusicConfigs =
@@ -29,23 +42,38 @@ public class GameMusicController : MonoBehaviour
     Coroutine preloadAndPlayRoutine;
     bool musicPausedForGamePause;
     float currentMusicVolume = 1f;
+    float defaultMusicLoopVolume = 1f;
     const float MusicLoadTimeoutSeconds = 5f;
 
     public AudioClip defaultMusic;
     public AudioClip defaultMusicLoop;
     public AudioClip deathMusic;
+    [Tooltip("Optional room-specific music. The default room is used by PlayDefaultMusic.")]
+    public RoomMusic[] roomMusics;
+    [SerializeField] private string defaultRoomId;
+    [Header("Room Loudness Calibration")]
+    [Tooltip("The loop whose perceived loudness is the target for room music normalization.")]
+    public AudioClip roomMusicLoudnessReference;
+    [Tooltip("The playback volume used by the reference music.")]
+    [Range(0f, 1f)] public float roomMusicLoudnessReferenceVolume = 0.4f;
+    [HideInInspector] public bool stageMusicLoudnessCalibrated;
     AudioClip battleCriticalMusic;
 
     [Range(0f, 1f)]
     public float defaultMusicVolume = 1f;
 
-    [Range(0f, 1f)]
-    public float defaultMusicLoopVolume = 1f;
-
     float battleCriticalMusicVolume = 1f;
 
     private void Awake()
     {
+        if (SceneManager.GetActiveScene().name == StageAssets.World3HallPortalSelectionController.SceneName &&
+            StageAssets.World3HallChipAssemblyController.HasPendingReveal)
+        {
+            defaultMusic = Resources.Load<AudioClip>("Sounds/Stage_World3HallStageClear");
+            defaultMusicLoop = null;
+            if (TryGetRoomMusic("Stage_World3HallStageClear", out RoomMusic clearMusic))
+                defaultMusicVolume = clearMusic.volume;
+        }
         musicSource = GetComponent<AudioSource>();
 
         if (Instance != null && Instance != this)
@@ -57,6 +85,13 @@ public class GameMusicController : MonoBehaviour
 
         Instance = this;
         DontDestroyOnLoad(gameObject);
+
+        defaultMusicLoopVolume = defaultMusicVolume;
+        ApplyDefaultRoomMusicSettings();
+        // The first scene controller is the persistent instance, so it does
+        // not pass through ApplySceneMusicSettingsFrom. Preload here as well
+        // to keep room transitions from synchronously loading their clips.
+        PreloadDefaultMusic();
 
         if (musicSource != null)
         {
@@ -115,14 +150,17 @@ public class GameMusicController : MonoBehaviour
 
         defaultMusic = sceneMusicController.defaultMusic;
         defaultMusicLoop = sceneMusicController.defaultMusicLoop;
+        defaultMusicLoopVolume = sceneMusicController.defaultMusicVolume;
+        roomMusics = sceneMusicController.roomMusics;
+        defaultRoomId = sceneMusicController.defaultRoomId;
         battleCriticalMusic = sceneMusicController.battleCriticalMusic;
         defaultMusicVolume = sceneMusicController.defaultMusicVolume;
-        defaultMusicLoopVolume = sceneMusicController.defaultMusicLoopVolume;
         battleCriticalMusicVolume = sceneMusicController.battleCriticalMusicVolume;
 
         if (sceneMusicController.deathMusic != null)
             deathMusic = sceneMusicController.deathMusic;
 
+        ApplyDefaultRoomMusicSettings();
         PreloadDefaultMusic();
     }
 
@@ -186,10 +224,25 @@ public class GameMusicController : MonoBehaviour
 
     public void PlayDefaultMusic(bool restart = true)
     {
+        if (TryGetRoomMusic(defaultRoomId, out RoomMusic roomMusic))
+        {
+            PlayRoomMusic(roomMusic, restart);
+            return;
+        }
+
         if (defaultMusic == null || musicSource == null)
             return;
 
         PlayMusicIntroThenLoop(defaultMusic, defaultMusicVolume, defaultMusicLoop, defaultMusicLoopVolume, 1f, restart);
+    }
+
+    public bool PlayRoomMusic(string roomId, bool restart = true)
+    {
+        if (!TryGetRoomMusic(roomId, out RoomMusic roomMusic))
+            return false;
+
+        PlayRoomMusic(roomMusic, restart);
+        return true;
     }
 
     public bool PlayBattleModeMusicPreview(BattleModeRules.BattleMusicSelection selection, float volumeMultiplier = 1f)
@@ -218,9 +271,9 @@ public class GameMusicController : MonoBehaviour
             float clampedMultiplier = Mathf.Clamp01(volumeMultiplier);
             PlayMusicIntroThenLoop(
                 introClip,
-                config.IntroVolume * clampedMultiplier,
+                GetBattleModeClipVolume(config.IntroClipName, config.IntroVolume) * clampedMultiplier,
                 loopClip,
-                config.LoopVolume * clampedMultiplier,
+                GetBattleModeClipVolume(config.LoopClipName, config.LoopVolume) * clampedMultiplier,
                 1f,
                 true);
             return true;
@@ -417,11 +470,15 @@ public class GameMusicController : MonoBehaviour
             return false;
 
         defaultMusic = selectedIntroClip;
-        defaultMusicVolume = selectedConfig.IntroVolume;
+        defaultMusicVolume = GetBattleModeClipVolume(selectedConfig.IntroClipName, selectedConfig.IntroVolume);
+        defaultMusicLoopVolume = string.IsNullOrWhiteSpace(selectedConfig.LoopClipName)
+            ? defaultMusicVolume
+            : GetBattleModeClipVolume(selectedConfig.LoopClipName, selectedConfig.LoopVolume);
         defaultMusicLoop = null;
-        defaultMusicLoopVolume = selectedConfig.LoopVolume;
         battleCriticalMusic = null;
-        battleCriticalMusicVolume = selectedConfig.CriticalVolume;
+        battleCriticalMusicVolume = string.IsNullOrWhiteSpace(selectedConfig.CriticalClipName)
+            ? selectedConfig.CriticalVolume
+            : GetBattleModeClipVolume(selectedConfig.CriticalClipName, selectedConfig.CriticalVolume);
 
         if (!string.IsNullOrWhiteSpace(selectedConfig.LoopClipName))
             defaultMusicLoop = FindClipByName(battleModeClips, selectedConfig.LoopClipName);
@@ -491,7 +548,203 @@ public class GameMusicController : MonoBehaviour
         PreloadAudioData(defaultMusic);
         PreloadAudioData(defaultMusicLoop);
         PreloadAudioData(deathMusic);
+
+        if (roomMusics == null)
+            return;
+
+        for (int i = 0; i < roomMusics.Length; i++)
+            PreloadRoomMusic(roomMusics[i]);
     }
+
+    void ApplyDefaultRoomMusicSettings()
+    {
+        if (!TryGetRoomMusic(defaultRoomId, out RoomMusic roomMusic))
+            return;
+
+        defaultMusic = roomMusic.music;
+        defaultMusicLoop = roomMusic.musicLoop;
+        defaultMusicVolume = roomMusic.volume;
+    }
+
+    bool TryGetRoomMusic(string roomId, out RoomMusic roomMusic)
+    {
+        if (!string.IsNullOrWhiteSpace(roomId) && roomMusics != null)
+        {
+            for (int i = 0; i < roomMusics.Length; i++)
+            {
+                if (string.Equals(roomMusics[i].roomId, roomId, System.StringComparison.OrdinalIgnoreCase) &&
+                    roomMusics[i].music != null)
+                {
+                    roomMusic = roomMusics[i];
+                    return true;
+                }
+            }
+        }
+
+        roomMusic = default;
+        return false;
+    }
+
+    void PlayRoomMusic(RoomMusic roomMusic, bool restart)
+    {
+        PlayMusicIntroThenLoop(
+            roomMusic.music,
+            roomMusic.volume,
+            roomMusic.musicLoop,
+            roomMusic.volume,
+            1f,
+            restart);
+    }
+
+    void PreloadRoomMusic(RoomMusic roomMusic)
+    {
+        PreloadAudioData(roomMusic.music);
+        PreloadAudioData(roomMusic.musicLoop);
+    }
+
+#if UNITY_EDITOR
+    public bool CalibrateStageMusic(AudioClip referenceClip, float referenceVolume)
+    {
+        if (referenceClip == null)
+            return false;
+
+        float referenceRms = CalculateRepresentativeRms(referenceClip);
+        if (referenceRms <= 0f)
+            return false;
+
+        float targetOutputRms = referenceRms * Mathf.Clamp01(referenceVolume);
+        bool changed = false;
+
+        Undo.RecordObject(this, "Calibrate Stage Music");
+
+        if (defaultMusic != null)
+        {
+            AudioClip defaultClip = defaultMusicLoop != null ? defaultMusicLoop : defaultMusic;
+            float defaultRms = CalculateRepresentativeRms(defaultClip);
+            if (defaultRms > 0f)
+            {
+                defaultMusicVolume = Mathf.Clamp01(targetOutputRms / defaultRms);
+                changed = true;
+            }
+        }
+
+        if (roomMusics != null)
+        {
+            for (int i = 0; i < roomMusics.Length; i++)
+            {
+                AudioClip roomClip = roomMusics[i].musicLoop != null
+                    ? roomMusics[i].musicLoop
+                    : roomMusics[i].music;
+                float roomRms = CalculateRepresentativeRms(roomClip);
+                if (roomRms <= 0f)
+                    continue;
+
+                RoomMusic roomMusic = roomMusics[i];
+                roomMusic.volume = Mathf.Clamp01(targetOutputRms / roomRms);
+                roomMusics[i] = roomMusic;
+                changed = true;
+            }
+        }
+
+        if (!changed)
+            return false;
+
+        roomMusicLoudnessReference = referenceClip;
+        roomMusicLoudnessReferenceVolume = Mathf.Clamp01(referenceVolume);
+        stageMusicLoudnessCalibrated = true;
+        EditorUtility.SetDirty(this);
+        return true;
+    }
+
+    [ContextMenu("Normalize Room Music Volumes")]
+    void NormalizeRoomMusicVolumes()
+    {
+        if (roomMusics == null || roomMusics.Length == 0)
+            return;
+
+        AudioClip calibrationReferenceClip = roomMusicLoudnessReference;
+        if (calibrationReferenceClip == null)
+        {
+            Debug.LogWarning("Assign a Room Music Loudness Reference before normalizing room music volumes.", this);
+            return;
+        }
+
+        float referenceRms = CalculateRepresentativeRms(calibrationReferenceClip);
+        if (referenceRms <= 0f)
+        {
+            Debug.LogWarning("The Room Music Loudness Reference could not be sampled.", this);
+            return;
+        }
+
+        float[] rmsLevels = new float[roomMusics.Length];
+
+        for (int i = 0; i < roomMusics.Length; i++)
+        {
+            AudioClip roomClip = roomMusics[i].musicLoop != null
+                ? roomMusics[i].musicLoop
+                : roomMusics[i].music;
+            float rms = CalculateRepresentativeRms(roomClip);
+            if (rms <= 0f)
+                continue;
+
+            rmsLevels[i] = rms;
+        }
+
+        float targetOutputRms = referenceRms * Mathf.Clamp01(roomMusicLoudnessReferenceVolume);
+        Undo.RecordObject(this, "Normalize Room Music Volumes");
+
+        for (int i = 0; i < roomMusics.Length; i++)
+        {
+            if (rmsLevels[i] <= 0f)
+                continue;
+
+            RoomMusic roomMusic = roomMusics[i];
+            roomMusic.volume = Mathf.Clamp01(targetOutputRms / rmsLevels[i]);
+            roomMusics[i] = roomMusic;
+        }
+
+        stageMusicLoudnessCalibrated = true;
+        EditorUtility.SetDirty(this);
+    }
+
+    public static float CalculateRepresentativeRms(AudioClip clip)
+    {
+        if (clip == null || clip.samples <= 0 || clip.channels <= 0)
+            return 0f;
+
+        if (clip.loadState == AudioDataLoadState.Unloaded)
+            clip.LoadAudioData();
+
+        const int windowCount = 12;
+        int framesPerWindow = Mathf.Min(clip.frequency * 2, clip.samples);
+        if (framesPerWindow <= 0)
+            return 0f;
+
+        float[] samples = new float[framesPerWindow * clip.channels];
+        double sumSquares = 0d;
+        long sampleCount = 0;
+        int maxOffset = Mathf.Max(0, clip.samples - framesPerWindow);
+
+        for (int window = 0; window < windowCount; window++)
+        {
+            int offset = windowCount == 1
+                ? 0
+                : Mathf.RoundToInt(maxOffset * (window / (float)(windowCount - 1)));
+            if (!clip.GetData(samples, offset))
+                continue;
+
+            for (int sample = 0; sample < samples.Length; sample++)
+            {
+                sumSquares += samples[sample] * samples[sample];
+                sampleCount++;
+            }
+        }
+
+        return sampleCount > 0
+            ? Mathf.Sqrt((float)(sumSquares / sampleCount))
+            : 0f;
+    }
+#endif
 
     static void PreloadAudioData(AudioClip clip)
     {
@@ -612,6 +865,14 @@ public class GameMusicController : MonoBehaviour
     {
         return scene.IsValid() &&
                scene.name.StartsWith("BattleMode_", System.StringComparison.OrdinalIgnoreCase);
+    }
+
+    static float GetBattleModeClipVolume(string clipName, float fallback)
+    {
+        MusicLoudnessCalibration calibration = Resources.Load<MusicLoudnessCalibration>(MusicLoudnessCalibration.ResourcesPath);
+        return calibration != null
+            ? calibration.GetVolume(clipName, fallback)
+            : Mathf.Clamp01(fallback);
     }
 
     static BattleModeMusicConfig[] GetAvailableBattleModeMusicConfigs(AudioClip[] clips)

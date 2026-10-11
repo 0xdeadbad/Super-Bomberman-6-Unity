@@ -936,6 +936,7 @@ public class SunMaskBoss : MonoBehaviour, IKillable
         Vector3 pos = new(origin.x + offset.x, origin.y + offset.y, transform.position.z);
 
         GameObject fxGo = Instantiate(explosionPrefab, pos, Quaternion.identity);
+        PlaceEffectAboveBody(fxGo);
 
         float minS = Mathf.Max(0.01f, explosionMinScale);
         float maxS = Mathf.Max(minS, explosionMaxScale);
@@ -959,6 +960,27 @@ public class SunMaskBoss : MonoBehaviour, IKillable
         }
 
         TryPlayDeathExplosionSfx();
+    }
+
+    void PlaceEffectAboveBody(GameObject effect)
+    {
+        if (effect == null) return;
+
+        SpriteRenderer topRenderer = null;
+        foreach (var renderer in GetComponentsInChildren<SpriteRenderer>(true))
+        {
+            if (topRenderer == null ||
+                SortingLayer.GetLayerValueFromID(renderer.sortingLayerID) > SortingLayer.GetLayerValueFromID(topRenderer.sortingLayerID) ||
+                (renderer.sortingLayerID == topRenderer.sortingLayerID && renderer.sortingOrder > topRenderer.sortingOrder))
+                topRenderer = renderer;
+        }
+        if (topRenderer == null) return;
+
+        foreach (var renderer in effect.GetComponentsInChildren<SpriteRenderer>(true))
+        {
+            renderer.sortingLayerID = topRenderer.sortingLayerID;
+            renderer.sortingOrder = topRenderer.sortingOrder + 1;
+        }
     }
 
     void TryPlayDeathExplosionSfx()
@@ -1164,6 +1186,7 @@ public class SunMaskBoss : MonoBehaviour, IKillable
             if (proj == null)
                 continue;
 
+            PlaceEffectAboveBody(proj.gameObject);
             proj.damage = Mathf.Max(1, starDamage);
             proj.obstacleMask = starObstacleMask;
             proj.Initialize(dir, starSpeed, starLifeTime);
@@ -1183,6 +1206,7 @@ public class SunMaskBoss : MonoBehaviour, IKillable
             if (proj == null)
                 continue;
 
+            PlaceEffectAboveBody(proj.gameObject);
             proj.damage = Mathf.Max(1, starDamage);
             proj.obstacleMask = starObstacleMask;
             proj.InitializeCurved(dir, Mathf.Max(0.01f, burstSpeed), starLifeTime, angularSpeedDegrees);
@@ -1200,6 +1224,7 @@ public class SunMaskBoss : MonoBehaviour, IKillable
         if (heart == null)
             return;
 
+        PlaceEffectAboveBody(heart.gameObject);
         heart.SetBoss(this);
 
         heart.Initialize(

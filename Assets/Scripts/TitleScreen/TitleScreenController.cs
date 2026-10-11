@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.IO;
 using TMPro;
 using UnityEngine;
@@ -125,7 +125,6 @@ public class TitleScreenController : MonoBehaviour
     [Header("Video Values (Separate TMP)")]
     [SerializeField] TextMeshProUGUI videoValuesText;
     [SerializeField] float videoValuesRightPadding = 100f;
-    float mobileTouchButtonsValueRightPadding = 100f;
 
     [Header("Audio")]
     public AudioClip titleMusic;
@@ -139,6 +138,12 @@ public class TitleScreenController : MonoBehaviour
 
     [Header("Cursor")]
     public AnimatedSpriteRenderer cursorRenderer;
+    [SerializeField] TitleScreenCursorEyeIdle cursorEyeIdle;
+    [SerializeField] TitleScreenCursorConfirmAnimator cursorConfirmAnimator;
+    [SerializeField] TitleScreenCursorDeniedAnimator cursorDeniedAnimator;
+    [SerializeField] Image cursorHeadImage;
+    [SerializeField] Sprite cursorDefaultHead;
+    [SerializeField] Sprite[] cursorConfirmHeadFrames;
     [SerializeField] Vector2 cursorOffset = new(-28f, 5f);
 
     [Header("Cursor Scaling")]
@@ -202,7 +207,6 @@ public class TitleScreenController : MonoBehaviour
     bool bossRushInspectorDefaultUnlocked;
     public bool BossRushInspectorOverrideUnlocked => bossRushInspectorDefaultUnlocked;
     bool IsVideoMenuAvailable => allowVideoMenu && !Application.isMobilePlatform;
-    bool IsMobileTouchButtonsOptionAvailable => Application.isMobilePlatform;
 
     Vector2 _lastMouseScreenPosition;
     bool _hasLastMouseScreenPosition;
@@ -250,8 +254,7 @@ public class TitleScreenController : MonoBehaviour
     const int OPTIONS_IDX_LANGUAGE = 1;
     const int OPTIONS_IDX_SOUND = 2;
     int OptionsVideoIndex => IsVideoMenuAvailable ? 3 : -1;
-    int OptionsTouchButtonsIndex => IsMobileTouchButtonsOptionAvailable ? 3 : -1;
-    int OptionsResetSaveIndex => (IsVideoMenuAvailable || IsMobileTouchButtonsOptionAvailable) ? 4 : 3;
+    int OptionsResetSaveIndex => IsVideoMenuAvailable ? 4 : 3;
 
     const int VIDEO_IDX_FULLSCREEN = 0;
     const int VIDEO_IDX_WINDOWSIZE = 1;
@@ -353,6 +356,22 @@ public class TitleScreenController : MonoBehaviour
             RectTransform root = GetEffectiveLayoutRoot();
             if (root != null)
                 cursorRenderer.transform.SetParent(root, false);
+
+            if (cursorConfirmAnimator == null)
+            {
+                cursorConfirmAnimator = cursorRenderer.GetComponent<TitleScreenCursorConfirmAnimator>();
+                if (cursorConfirmAnimator == null)
+                {
+                    cursorConfirmAnimator = cursorRenderer.gameObject.AddComponent<TitleScreenCursorConfirmAnimator>();
+                }
+            }
+
+            cursorConfirmAnimator.Configure(
+                cursorRenderer,
+                cursorEyeIdle,
+                cursorHeadImage,
+                cursorDefaultHead,
+                cursorConfirmHeadFrames);
 
             _cursorBaseLocalScale = cursorRenderer.transform.localScale;
             _cursorBaseScaleCaptured = true;
@@ -1136,8 +1155,7 @@ public class TitleScreenController : MonoBehaviour
 
         bool showVideoValues = menuMode == MenuMode.Video && IsVideoMenuAvailable;
         bool showSoundValues = menuMode == MenuMode.Sound;
-        bool showMobileTouchValue = menuMode == MenuMode.Options && IsMobileTouchButtonsOptionAvailable;
-        bool show = showVideoValues || showSoundValues || showMobileTouchValue;
+        bool show = showVideoValues || showSoundValues;
         if (!show)
         {
             if (videoValuesText.gameObject.activeSelf)
@@ -1159,14 +1177,14 @@ public class TitleScreenController : MonoBehaviour
         if (root == null)
             return;
 
-        int valueLine = showMobileTouchValue ? OptionsTouchButtonsIndex : 0;
+        int valueLine = 0;
         TMP_LineInfo li0 = ti.lineInfo[Mathf.Clamp(valueLine, 0, ti.lineCount - 1)];
         float yTopMenuLocal = li0.ascender;
 
         Vector3 world = menuText.rectTransform.TransformPoint(new Vector3(0f, yTopMenuLocal, 0f));
         Vector3 rootLocal = root.InverseTransformPoint(world);
 
-        float rightPadding = showMobileTouchValue ? mobileTouchButtonsValueRightPadding : videoValuesRightPadding;
+        float rightPadding = videoValuesRightPadding;
         float x = -Mathf.Round(ScaledFloat(rightPadding));
         float y = Mathf.Round(rootLocal.y);
 
@@ -1280,12 +1298,30 @@ public class TitleScreenController : MonoBehaviour
         {
             if (input.GetDown(p, action))
             {
+                NotifyCursorInput();
                 pid = p;
                 return true;
             }
         }
 
         return false;
+    }
+
+    void NotifyCursorInput()
+    {
+        if (cursorDeniedAnimator != null)
+            cursorDeniedAnimator.Cancel();
+
+        if (cursorEyeIdle != null)
+            cursorEyeIdle.NotifyInput();
+    }
+
+    IEnumerator PlayCursorConfirm()
+    {
+        if (cursorConfirmAnimator != null)
+            yield return cursorConfirmAnimator.Play();
+        else
+            yield return new WaitForSecondsRealtime(0.5f);
     }
 
     bool TryGetAnyPlayerDownEither(PlayerAction a, PlayerAction b, out int pid)
@@ -1342,6 +1378,7 @@ public class TitleScreenController : MonoBehaviour
                 state.screenPosition = touch.position.ReadValue();
                 state.pressedThisFrame = touch.press.wasPressedThisFrame;
                 state.secondaryPressedThisFrame = false;
+                NotifyCursorInput();
                 return state;
             }
         }
@@ -1362,6 +1399,8 @@ public class TitleScreenController : MonoBehaviour
 
             if (!state.valid)
                 return state;
+
+            NotifyCursorInput();
 
             state.screenPosition = currentMousePosition;
             state.pressedThisFrame = Mouse.current.leftButton.wasPressedThisFrame;
@@ -1417,8 +1456,7 @@ public class TitleScreenController : MonoBehaviour
             float right = li.lineExtents.max.x + padX;
 
             if (menuMode == MenuMode.Video ||
-                menuMode == MenuMode.Sound ||
-                (menuMode == MenuMode.Options && IsMobileTouchButtonsOptionAvailable && i == OptionsTouchButtonsIndex))
+                menuMode == MenuMode.Sound)
             {
                 right += Mathf.Max(40f, ScaledFloat(videoValuesRightPadding + 40f));
             }
@@ -1673,7 +1711,7 @@ public class TitleScreenController : MonoBehaviour
                         PlaySelectSfx();
 
                         if (cursorRenderer != null)
-                            yield return cursorRenderer.PlayCycles(2);
+                            yield return PlayCursorConfirm();
 
                         SaveSystem.SetLanguage(languages[menuIndex]);
                         menuMode = MenuMode.Options;
@@ -1824,7 +1862,7 @@ public class TitleScreenController : MonoBehaviour
                         PlaySelectSfx();
 
                         if (cursorRenderer != null)
-                            yield return cursorRenderer.PlayCycles(2);
+                            yield return PlayCursorConfirm();
 
                         menuMode = MenuMode.GameModes;
                         menuIndex = 0;
@@ -1848,7 +1886,7 @@ public class TitleScreenController : MonoBehaviour
                         PlaySelectSfx();
 
                         if (cursorRenderer != null)
-                            yield return cursorRenderer.PlayCycles(2);
+                            yield return PlayCursorConfirm();
 
                         menuMode = MenuMode.Options;
                         menuIndex = 0;
@@ -1871,7 +1909,7 @@ public class TitleScreenController : MonoBehaviour
                         PlaySelectSfx();
 
                         if (cursorRenderer != null)
-                            yield return cursorRenderer.PlayCycles(2);
+                            yield return PlayCursorConfirm();
 
                         AchievementsRequested = true;
                         yield return StartSelectedGameFlow();
@@ -1882,7 +1920,7 @@ public class TitleScreenController : MonoBehaviour
                     PlaySelectSfx();
 
                     if (cursorRenderer != null)
-                        yield return cursorRenderer.PlayCycles(2);
+                        yield return PlayCursorConfirm();
 
                     ExitRequested = true;
                     yield return ExitGame();
@@ -1907,7 +1945,7 @@ public class TitleScreenController : MonoBehaviour
                     PlaySelectSfx();
 
                     if (cursorRenderer != null)
-                        yield return cursorRenderer.PlayCycles(2);
+                        yield return PlayCursorConfirm();
 
                     if (menuIndex == GAME_MODE_IDX_BATTLE)
                     {
@@ -1942,7 +1980,7 @@ public class TitleScreenController : MonoBehaviour
                     PlaySelectSfx();
 
                     if (cursorRenderer != null)
-                        yield return cursorRenderer.PlayCycles(2);
+                        yield return PlayCursorConfirm();
 
                     if (menuIndex == OPTIONS_IDX_CONTROLS)
                     {
@@ -2020,27 +2058,6 @@ public class TitleScreenController : MonoBehaviour
                         continue;
                     }
 
-                    if (IsMobileTouchButtonsOptionAvailable && menuIndex == OptionsTouchButtonsIndex)
-                    {
-                        locked = false;
-
-                        bool visible = !SaveSystem.GetMobileTouchButtonsVisible();
-                        SaveSystem.SetMobileTouchButtonsVisible(visible);
-
-                        if (MobileControlsRoot.Instance != null)
-                            MobileControlsRoot.Instance.RefreshVisibilityFromSavedPreference();
-
-                        HideFooterMessageImmediate();
-                        HideBossRushLockedMessageImmediate();
-                        RefreshMenuText();
-
-                        while (AnyPlayerHeld(PlayerAction.Start) || AnyPlayerHeld(PlayerAction.ActionA))
-                            yield return null;
-
-                        yield return null;
-                        continue;
-                    }
-
                     if (menuIndex == OptionsResetSaveIndex)
                     {
                         menuMode = MenuMode.ResetSaveConfirm;
@@ -2084,12 +2101,14 @@ public class TitleScreenController : MonoBehaviour
                     PlaySelectSfx();
 
                     if (cursorRenderer != null)
-                        yield return cursorRenderer.PlayCycles(2);
+                        yield return PlayCursorConfirm();
 
                     ResetEntireSaveFile();
                     forceBossRushUnlocked = bossRushInspectorDefaultUnlocked;
 
                     PlayResetSaveCompletedSfx();
+                    if (cursorEyeIdle != null)
+                        cursorEyeIdle.ShowResetCompleteEye();
 
                     menuMode = MenuMode.Options;
                     menuIndex = OptionsResetSaveIndex;
@@ -2122,7 +2141,7 @@ public class TitleScreenController : MonoBehaviour
                     PlaySelectSfx();
 
                     if (cursorRenderer != null)
-                        yield return cursorRenderer.PlayCycles(2);
+                        yield return PlayCursorConfirm();
 
                     if (pendingStartFlow == StartFlowMode.BossRush)
                     {
@@ -2152,7 +2171,7 @@ public class TitleScreenController : MonoBehaviour
     {
         if (menuMode == MenuMode.PlayerCount) return 4;
         if (menuMode == MenuMode.GameModes) return 3;
-        if (menuMode == MenuMode.Options) return (IsVideoMenuAvailable || IsMobileTouchButtonsOptionAvailable) ? 5 : 4;
+        if (menuMode == MenuMode.Options) return IsVideoMenuAvailable ? 5 : 4;
         if (menuMode == MenuMode.Language) return GameTextDatabase.SupportedLanguages.Length;
         if (menuMode == MenuMode.Sound) return 3;
         if (menuMode == MenuMode.Video) return 2;
@@ -2365,24 +2384,6 @@ public class TitleScreenController : MonoBehaviour
                     $"<size={size}>{video}</size>\n" +
                     $"<size={size}>{resetSave}</size>" +
                     "</align>";
-            }
-            else if (IsMobileTouchButtonsOptionAvailable)
-            {
-                string touchButtons = $"<color=#{baseRgb}FF>{text.TouchButtons}</color>";
-
-                menuText.text =
-                    "<align=left>" +
-                    $"<size={size}>{controls}</size>\n" +
-                    $"<size={size}>{language}</size>\n" +
-                    $"<size={size}>{sound}</size>\n" +
-                    $"<size={size}>{touchButtons}</size>\n" +
-                    $"<size={size}>{resetSave}</size>" +
-                    "</align>";
-
-                EnsureVideoValuesText();
-
-                if (videoValuesText != null)
-                    videoValuesText.text = SaveSystem.GetMobileTouchButtonsVisible() ? text.On : text.Off;
             }
             else
             {
@@ -2846,6 +2847,9 @@ public class TitleScreenController : MonoBehaviour
 
     void PlayDeniedSfx()
     {
+        if (cursorDeniedAnimator != null)
+            cursorDeniedAnimator.Play();
+
         if (GameMusicController.Instance == null)
             return;
 

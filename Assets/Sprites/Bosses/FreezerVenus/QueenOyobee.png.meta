@@ -1,0 +1,784 @@
+fileFormatVersion: 2
+guid: f946d3d69819ae64eb473178fb93e6dc
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 347924424381370921
+    second: QueenOyobee_0
+  - first:
+      213: -2174409526257979162
+    second: QueenOyobee_1
+  - first:
+      213: -2007959473941399182
+    second: QueenOyobee_2
+  - first:
+      213: 4569282825855077249
+    second: QueenOyobee_3
+  - first:
+      213: 4968400101101644966
+    second: QueenOyobee_4
+  - first:
+      213: -925403165219731934
+    second: QueenOyobee_5
+  - first:
+      213: 3291447454908174651
+    second: QueenOyobee_6
+  - first:
+      213: 8809017805555846282
+    second: QueenOyobee_7
+  - first:
+      213: 1943046191595211693
+    second: QueenOyobee_8
+  - first:
+      213: -4554304264786017946
+    second: QueenOyobee_9
+  - first:
+      213: -3601221948870631956
+    second: QueenOyobee_10
+  - first:
+      213: 6646801720020207878
+    second: QueenOyobee_11
+  - first:
+      213: 2688275009410892566
+    second: QueenOyobee_12
+  - first:
+      213: 5508559851425486646
+    second: QueenOyobee_13
+  - first:
+      213: 6497839560044583956
+    second: QueenOyobee_14
+  - first:
+      213: -1901188012437184537
+    second: QueenOyobee_15
+  - first:
+      213: -5852547400562802057
+    second: QueenOyobee_16
+  - first:
+      213: -7172420279107368960
+    second: QueenOyobee_17
+  - first:
+      213: 4064601112969345835
+    second: QueenOyobee_18
+  - first:
+      213: 8968597996887501650
+    second: QueenOyobee_19
+  - first:
+      213: -2207505861997111206
+    second: QueenOyobee_20
+  - first:
+      213: -8102209321085072829
+    second: QueenOyobee_21
+  - first:
+      213: 3997582528647277965
+    second: QueenOyobee_22
+  - first:
+      213: -3491810023594359545
+    second: QueenOyobee_23
+  - first:
+      213: 7330169161230400153
+    second: QueenOyobee_24
+  - first:
+      213: -583571989033646949
+    second: QueenOyobee_25
+  - first:
+      213: -8003238347905717957
+    second: QueenOyobee_26
+  - first:
+      213: -1514032419965562596
+    second: QueenOyobee_27
+  - first:
+      213: -4805678921860061110
+    second: QueenOyobee_28
+  - first:
+      213: 6912713372389304601
+    second: QueenOyobee_29
+  - first:
+      213: 2319543010639394936
+    second: QueenOyobee_30
+  - first:
+      213: 8203037901087754787
+    second: QueenOyobee_31
+  - first:
+      213: 7731760756147799586
+    second: QueenOyobee_32
+  - first:
+      213: -993161488095662501
+    second: QueenOyobee_33
+  - first:
+      213: 5607834626229781072
+    second: QueenOyobee_34
+  - first:
+      213: -6517808046613613926
+    second: QueenOyobee_35
+  - first:
+      213: 8837942854896732810
+    second: QueenOyobee_36
+  - first:
+      213: 8322817079939103237
+    second: QueenOyobee_37
+  - first:
+      213: 3981638941791597085
+    second: QueenOyobee_38
+  - first:
+      213: -7591228714422852676
+    second: QueenOyobee_39
+  - first:
+      213: 5224768854289166073
+    second: QueenOyobee_40
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 16
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationMethod: 0
+  spriteTessellationDetail: -1
+  spriteGeometrySubdivision: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 512
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 512
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 512
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Idle0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 326
+        width: 64
+        height: 80
+      alignment: 9
+      pivot: {x: 0.5, y: 0.35}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: d5463e7bc63859807ba79f64d4aec5a3
+      internalID: -328222621
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Idle1
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 326
+        width: 64
+        height: 80
+      alignment: 9
+      pivot: {x: 0.5, y: 0.35}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: f97b1976a653c12ddd459a3f3d2d047d
+      internalID: -1090103221
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Idle2
+      rect:
+        serializedVersion: 2
+        x: 128
+        y: 326
+        width: 64
+        height: 80
+      alignment: 9
+      pivot: {x: 0.5, y: 0.35}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: b2bbde2f8e4a7921cdfdce79b1270c42
+      internalID: 744765056
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Idle3
+      rect:
+        serializedVersion: 2
+        x: 192
+        y: 326
+        width: 64
+        height: 80
+      alignment: 9
+      pivot: {x: 0.5, y: 0.35}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: e26895e28002b02b7f4ed810257b027d
+      internalID: -1863545169
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Crown0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 408
+        width: 33
+        height: 34
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 29e4fe095a3dfab4ef55bf9641025746
+      internalID: 1732667725
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Crown1
+      rect:
+        serializedVersion: 2
+        x: 33
+        y: 408
+        width: 33
+        height: 34
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 9783dee393152f6da28e054fbf362016
+      internalID: -11527691
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Crown2
+      rect:
+        serializedVersion: 2
+        x: 66
+        y: 408
+        width: 33
+        height: 34
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: c48c02ea7dd4505c6982c468ad833a99
+      internalID: -2019206497
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Crownless0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 120
+        width: 64
+        height: 78
+      alignment: 9
+      pivot: {x: 0.5, y: 0.35897437}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 33caaa96d9f802efe65569a29e288b8b
+      internalID: 2080569493
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Hurt0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 38
+        width: 64
+        height: 80
+      alignment: 9
+      pivot: {x: 0.5, y: 0.35}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: b080ebffa3c9051703bfc380c7c81db2
+      internalID: 1802397169
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Snow0
+      rect:
+        serializedVersion: 2
+        x: 19
+        y: 198
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 50c4c53d88be91857c76667c37b5efe8
+      internalID: -1489222087
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Crownless1
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 120
+        width: 64
+        height: 78
+      alignment: 9
+      pivot: {x: 0.5, y: 0.35897437}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 56692e35d05c4d824409027f0ed7e110
+      internalID: -589138824
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Hurt1
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 38
+        width: 64
+        height: 80
+      alignment: 9
+      pivot: {x: 0.5, y: 0.35}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: cdad953cc7f0816aff27f076663f3bd8
+      internalID: -1081982011
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Snow1
+      rect:
+        serializedVersion: 2
+        x: 51
+        y: 198
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: e5ed5b68055c23ef0040734e88374bd2
+      internalID: -1464033138
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Scepter0
+      rect:
+        serializedVersion: 2
+        x: 19
+        y: 251
+        width: 30
+        height: 72
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: d9b7ab9122e7fd9548653dd8eabb5f25
+      internalID: -2084333327
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Scepter1
+      rect:
+        serializedVersion: 2
+        x: 51
+        y: 251
+        width: 30
+        height: 72
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 54bdab2de32f3d37eea2de24fe6e3b0f
+      internalID: -1868553770
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Scepter4
+      rect:
+        serializedVersion: 2
+        x: 118
+        y: 253
+        width: 66
+        height: 32
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: af60d7f1fc3aa36e7045db759d0a469d
+      internalID: 764316575
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: FreezeSparkle
+      rect:
+        serializedVersion: 2
+        x: 1
+        y: 1
+        width: 35
+        height: 35
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 471c9d9bc545a48d0a32deecff4b98bb
+      internalID: -1581027737
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Shadow
+      rect:
+        serializedVersion: 2
+        x: 11
+        y: 234
+        width: 46
+        height: 16
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 64803284d676b314f9b9800463d26652
+      internalID: -765441394
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Scepter3
+      rect:
+        serializedVersion: 2
+        x: 83
+        y: 266
+        width: 30
+        height: 38
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 5e2164e537bee704c8819616bbee5abc
+      internalID: -1956766507
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Snow2
+      rect:
+        serializedVersion: 2
+        x: 90
+        y: 213
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: d47524f939194924f8b20a929312e104
+      internalID: 551598752
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Snow3
+      rect:
+        serializedVersion: 2
+        x: 103
+        y: 209
+        width: 14
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: a61ef95f2be5b5b44bd384fcb4196461
+      internalID: -916857185
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Snow4
+      rect:
+        serializedVersion: 2
+        x: 119
+        y: 208
+        width: 16
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 8da0670a0787e824386bd4ed8dbf1aac
+      internalID: 1329027639
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Snow5
+      rect:
+        serializedVersion: 2
+        x: 136
+        y: 208
+        width: 16
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 34b68b548cb654346bd26c5940713c7b
+      internalID: -799487787
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: bc58abe6a2868f14aa0d1c47849069a6
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Crown0: 1732667725
+      Crown1: -11527691
+      Crown2: -2019206497
+      Crownless0: 2080569493
+      Crownless1: -589138824
+      FreezeSparkle: -1581027737
+      Hurt0: 1802397169
+      Hurt1: -1081982011
+      Idle0: -328222621
+      Idle1: -1090103221
+      Idle2: 744765056
+      Idle3: -1863545169
+      Scepter0: -2084333327
+      Scepter1: -1868553770
+      Scepter3: -1956766507
+      Scepter4: 764316575
+      Shadow: -765441394
+      Snow0: -1489222087
+      Snow1: -1464033138
+      Snow2: 551598752
+      Snow3: -916857185
+      Snow4: 1329027639
+      Snow5: -799487787
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

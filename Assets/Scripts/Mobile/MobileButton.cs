@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
@@ -23,19 +23,21 @@ public class MobileButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandle
     [SerializeField] private bool disableVisualPreserveAspect = true;
     [SerializeField] private bool disableVisualRaycastTarget = true;
 
-    private Image _hitboxImage;
+    private int activePointer = int.MinValue;
     private Vector2 _releasedIconPosition;
     private Sprite _defaultIconSprite;
+    private Sprite _defaultVisualSprite;
 
     public PlayerAction Action => action;
 
     void Awake()
     {
-        _hitboxImage = GetComponent<Image>();
+
 
         ConfigureVisualToMatchHitbox();
         CacheReleasedIconPosition();
         CacheDefaultIconSprite();
+        CacheDefaultVisualSprite();
         ApplyReleasedVisual();
     }
 
@@ -50,8 +52,19 @@ public class MobileButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandle
         iconImage.sprite = contextSprite != null ? contextSprite : _defaultIconSprite;
     }
 
+    public void SetContextVisual(Sprite contextSprite)
+    {
+        if (visualImage == null)
+            return;
+
+        visualImage.sprite = contextSprite != null ? contextSprite : _defaultVisualSprite;
+    }
+
     public void OnPointerDown(PointerEventData eventData)
     {
+        if (MobileControlsRoot.Editing || activePointer != int.MinValue) return;
+        activePointer = eventData.pointerId;
+        MobileControlsRoot.Instance?.NotifyTouch();
         if (MobileInputBridge.Instance != null)
             MobileInputBridge.Instance.Press(action);
 
@@ -60,19 +73,23 @@ public class MobileButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandle
 
     public void OnPointerUp(PointerEventData eventData)
     {
-        if (MobileInputBridge.Instance != null)
-            MobileInputBridge.Instance.Release(action);
-
-        ApplyReleasedVisual();
+        if (eventData.pointerId == activePointer) Release();
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
-        if (MobileInputBridge.Instance != null)
-            MobileInputBridge.Instance.Release(action);
+        if (eventData.pointerId == activePointer) Release();
+    }
 
+    public void Release()
+    {
+        activePointer = int.MinValue;
+        MobileInputBridge.Instance?.Release(action);
         ApplyReleasedVisual();
     }
+
+    void OnDisable() => Release();
+    void OnApplicationFocus(bool focus) { if (!focus) Release(); }
 
     void ApplyPressedVisual()
     {
@@ -137,6 +154,12 @@ public class MobileButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandle
     {
         if (iconTarget != null && iconTarget.TryGetComponent<Image>(out var iconImage))
             _defaultIconSprite = iconImage.sprite;
+    }
+
+    void CacheDefaultVisualSprite()
+    {
+        if (visualImage != null)
+            _defaultVisualSprite = visualImage.sprite;
     }
 
     void OnValidate()

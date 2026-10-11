@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 public static class AbilityRegistry
@@ -7,6 +7,7 @@ public static class AbilityRegistry
     {
         { BombKickAbility.AbilityId, typeof(BombKickAbility) },
         { BombPunchAbility.AbilityId, typeof(BombPunchAbility) },
+        { LineBombAbility.AbilityId, typeof(LineBombAbility) },
         { PowerGloveAbility.AbilityId, typeof(PowerGloveAbility) },
         { PierceBombAbility.AbilityId, typeof(PierceBombAbility) },
         { ControlBombAbility.AbilityId, typeof(ControlBombAbility) },
@@ -25,6 +26,7 @@ public static class AbilityRegistry
         { PowerBombAbility.AbilityId, typeof(PowerBombAbility) },
         { RubberBombAbility.AbilityId, typeof(RubberBombAbility) },
         { MagnetBombAbility.AbilityId, typeof(MagnetBombAbility) },
+        { SearchBombAbility.AbilityId, typeof(SearchBombAbility) },
     };
 
     public static bool TryGetType(string id, out Type type) => map.TryGetValue(id, out type);

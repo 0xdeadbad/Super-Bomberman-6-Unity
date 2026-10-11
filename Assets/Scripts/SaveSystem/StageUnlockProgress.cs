@@ -2,11 +2,26 @@ using System.Collections.Generic;
 
 public static class StageUnlockProgress
 {
+    static readonly string[] World3InitialStages =
+    {
+        "Stage_3-1", "Stage_3-2", "Stage_3-3", "Stage_3-4", "Stage_3-5"
+    };
+
+    static readonly string[] CampaignStageOrder =
+    {
+        "Stage_1-1", "Stage_1-2", "Stage_1-3", "Stage_1-4", "Stage_1-5", "Stage_1-6", "Stage_1-7",
+        "Stage_2-1", "Stage_2-2", "Stage_2-3", "Stage_2-4", "Stage_2-5", "Stage_2-6", "Stage_2-7",
+        "Stage_3-1", "Stage_3-2", "Stage_3-3", "Stage_3-4", "Stage_3-5", "Stage_3-6", "Stage_3-7", "Stage_3-8"
+    };
+
     public static void ReloadFromPrefs()
     {
         SaveSystem.Reload();
-        EnsureDefaultUnlocked();
-        TryUnlockAllClearRewards();
+        bool progressChanged = EnsureCampaignStageOrder();
+        bool rewardsChanged = TryUnlockAllClearRewards();
+
+        if (progressChanged || rewardsChanged)
+            SaveSystem.Save();
     }
 
     public static void RegisterStageOrder(IEnumerable<string> orderedSceneNames)
@@ -31,12 +46,53 @@ public static class StageUnlockProgress
             }
         }
 
-        if (newOrder.Count > 0)
+        if (newOrder.Count > 0 && !HasSameOrder(slot.stageOrder, newOrder))
             slot.stageOrder = newOrder;
 
-        EnsureDefaultUnlocked();
+        EnsureCampaignStageOrder();
         TryUnlockAllClearRewards();
         SaveSystem.Save();
+    }
+
+    public static bool EnsureCampaignStageOrder()
+    {
+        var slot = SaveSystem.ActiveSlot;
+        if (slot == null)
+            return false;
+
+        bool changed = false;
+
+        if (!HasSameOrder(slot.stageOrder, CampaignStageOrder))
+        {
+            slot.stageOrder = new List<string>(CampaignStageOrder);
+            changed = true;
+        }
+
+        if (EnsureDefaultUnlocked(slot))
+            changed = true;
+
+        for (int i = 0; i < CampaignStageOrder.Length - 1; i++)
+        {
+            string completedStage = CampaignStageOrder[i];
+            string nextStage = CampaignStageOrder[i + 1];
+
+            if (!slot.clearedStages.Contains(completedStage))
+                break;
+
+            if (!slot.unlockedStages.Contains(nextStage))
+            {
+                slot.unlockedStages.Add(nextStage);
+                changed = true;
+            }
+        }
+
+        if (EnsureWorld3Unlocks(slot))
+            changed = true;
+
+        if (changed)
+            SaveSystem.Save();
+
+        return changed;
     }
 
     public static bool IsUnlocked(string sceneName)
@@ -45,7 +101,7 @@ public static class StageUnlockProgress
         if (slot == null)
             return false;
 
-        EnsureDefaultUnlocked();
+        EnsureCampaignStageOrder();
 
         string normalized = Normalize(sceneName);
         if (string.IsNullOrEmpty(normalized))
@@ -60,7 +116,7 @@ public static class StageUnlockProgress
         if (slot == null)
             return false;
 
-        EnsureDefaultUnlocked();
+        EnsureCampaignStageOrder();
 
         string normalized = Normalize(sceneName);
         if (string.IsNullOrEmpty(normalized))
@@ -75,7 +131,7 @@ public static class StageUnlockProgress
         if (slot == null)
             return false;
 
-        EnsureDefaultUnlocked();
+        EnsureCampaignStageOrder();
 
         if (slot.stageOrder == null || slot.stageOrder.Count <= 0)
             return false;
@@ -118,7 +174,8 @@ public static class StageUnlockProgress
         if (slot == null)
             return 0;
 
-        return slot.stageOrder != null ? slot.stageOrder.Count : 0;
+        EnsureCampaignStageOrder();
+        return CampaignStageOrder.Length;
     }
 
     public static int GetClearedRegisteredStageCount()
@@ -127,17 +184,24 @@ public static class StageUnlockProgress
         if (slot == null)
             return 0;
 
-        if (slot.stageOrder == null || slot.stageOrder.Count <= 0)
+        EnsureCampaignStageOrder();
+        return GetClearedCampaignStageCount(slot);
+    }
+
+    public static int GetCampaignStageCount()
+    {
+        return CampaignStageOrder.Length;
+    }
+
+    public static int GetClearedCampaignStageCount(Assets.Scripts.SaveSystem.StageSlot slot)
+    {
+        if (slot == null || slot.clearedStages == null)
             return 0;
 
         int count = 0;
-
-        for (int i = 0; i < slot.stageOrder.Count; i++)
-        {
-            string sceneName = slot.stageOrder[i];
-            if (!string.IsNullOrEmpty(sceneName) && slot.clearedStages.Contains(sceneName))
+        for (int i = 0; i < CampaignStageOrder.Length; i++)
+            if (slot.clearedStages.Contains(CampaignStageOrder[i]))
                 count++;
-        }
 
         return count;
     }
@@ -173,7 +237,7 @@ public static class StageUnlockProgress
         if (slot == null)
             return;
 
-        EnsureDefaultUnlocked();
+        EnsureCampaignStageOrder();
 
         string normalized = Normalize(sceneName);
         if (string.IsNullOrEmpty(normalized))
@@ -195,7 +259,7 @@ public static class StageUnlockProgress
         if (slot == null)
             return;
 
-        EnsureDefaultUnlocked();
+        EnsureCampaignStageOrder();
 
         string normalized = Normalize(sceneName);
         if (string.IsNullOrEmpty(normalized))
@@ -218,6 +282,9 @@ public static class StageUnlockProgress
         if (MarkClearedForActiveDifficulty(slot, normalized))
             changed = true;
 
+        if (EnsureWorld3Unlocks(slot))
+            changed = true;
+
         bool rewardsChanged = TryUnlockAllClearRewards();
 
         if (changed || rewardsChanged)
@@ -233,7 +300,7 @@ public static class StageUnlockProgress
         if (slot == null)
             return;
 
-        EnsureDefaultUnlocked();
+        EnsureCampaignStageOrder();
 
         string normalizedCurrent = Normalize(currentSceneName);
         if (string.IsNullOrEmpty(normalizedCurrent))
@@ -263,7 +330,7 @@ public static class StageUnlockProgress
             if (nextIndex < slot.stageOrder.Count)
             {
                 string nextScene = slot.stageOrder[nextIndex];
-                if (!string.IsNullOrEmpty(nextScene) && !slot.unlockedStages.Contains(nextScene))
+                if (nextScene != "Stage_3-6" && !string.IsNullOrEmpty(nextScene) && !slot.unlockedStages.Contains(nextScene))
                 {
                     slot.unlockedStages.Add(nextScene);
                     changed = true;
@@ -271,20 +338,81 @@ public static class StageUnlockProgress
             }
         }
 
+        if (EnsureWorld3Unlocks(slot))
+            changed = true;
+
         bool rewardsChanged = TryUnlockAllClearRewards();
 
         if (changed || rewardsChanged)
             SaveSystem.Save();
     }
 
-    private static void EnsureDefaultUnlocked()
+    private static bool EnsureWorld3Unlocks(Assets.Scripts.SaveSystem.StageSlot slot)
     {
-        var slot = SaveSystem.ActiveSlot;
+        bool changed = false;
+        bool allInitialStagesCleared = true;
+        bool world2Cleared = slot.clearedStages.Contains("Stage_2-7");
+
+        foreach (string sceneName in World3InitialStages)
+        {
+            if (world2Cleared && !slot.unlockedStages.Contains(sceneName))
+            {
+                slot.unlockedStages.Add(sceneName);
+                changed = true;
+            }
+
+            if (!slot.clearedStages.Contains(sceneName))
+                allInitialStagesCleared = false;
+        }
+
+        if (allInitialStagesCleared)
+        {
+            if (!slot.unlockedStages.Contains("Stage_3-6"))
+            {
+                slot.unlockedStages.Add("Stage_3-6");
+                changed = true;
+            }
+        }
+        else if (slot.unlockedStages.Remove("Stage_3-6"))
+        {
+            changed = true;
+        }
+
+        if (allInitialStagesCleared && slot.clearedStages.Contains("Stage_3-6"))
+        {
+            if (!slot.unlockedStages.Contains("Stage_3-7"))
+            {
+                slot.unlockedStages.Add("Stage_3-7");
+                changed = true;
+            }
+        }
+        else if (slot.unlockedStages.Remove("Stage_3-7"))
+            changed = true;
+
+        // The duel earns the seventh chip part; only the complete chip opens 3-8.
+        bool completeChip = allInitialStagesCleared && slot.clearedStages.Contains("Stage_3-6") &&
+            slot.clearedStages.Contains("Stage_3-7");
+        if (completeChip)
+        {
+            if (!slot.unlockedStages.Contains("Stage_3-8"))
+            {
+                slot.unlockedStages.Add("Stage_3-8");
+                changed = true;
+            }
+        }
+        else if (slot.unlockedStages.Remove("Stage_3-8"))
+            changed = true;
+
+        return changed;
+    }
+
+    private static bool EnsureDefaultUnlocked(Assets.Scripts.SaveSystem.StageSlot slot)
+    {
         if (slot == null)
-            return;
+            return false;
 
         if (slot.unlockedStages.Count > 0)
-            return;
+            return false;
 
         string firstStage = null;
 
@@ -295,6 +423,19 @@ public static class StageUnlockProgress
             firstStage = "Stage_1-1";
 
         slot.unlockedStages.Add(firstStage);
+        return true;
+    }
+
+    private static bool HasSameOrder(IList<string> left, IList<string> right)
+    {
+        if (left == null || right == null || left.Count != right.Count)
+            return false;
+
+        for (int i = 0; i < left.Count; i++)
+            if (!string.Equals(left[i], right[i], System.StringComparison.Ordinal))
+                return false;
+
+        return true;
     }
 
     private static bool TryUnlockAllClearRewards()

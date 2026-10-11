@@ -916,6 +916,9 @@ public class YellowLouieKickAbility : MonoBehaviour, IPlayerAbility
                     TryReverseRubberBombQueue(queue, queueDirections, tileSize, destructibleTilemap, transfer))
                 {
                     front.PlayKickBounceSfx();
+                    // Uma Rubber Bomb presa entre dois bloqueios podia inverter a
+                    // direção repetidamente sem yield e congelar o frame.
+                    yield return null;
                     continue;
                 }
 
@@ -968,7 +971,14 @@ public class YellowLouieKickAbility : MonoBehaviour, IPlayerAbility
             bool hitMovingBomb = false;
             bool hitPlayer = false;
 
-            if (TryFindPlayerOnBombQueuePath(queue, starts, ends, out _, out _, out _, out _))
+            if (TryFindPlayerOnBombQueuePath(
+                    queue,
+                    starts,
+                    ends,
+                    out _,
+                    out _,
+                    out _,
+                    out _))
             {
                 hitPlayer = true;
             }
@@ -999,7 +1009,14 @@ public class YellowLouieKickAbility : MonoBehaviour, IPlayerAbility
                     break;
                 }
 
-                if (TryFindPlayerOnBombQueuePath(queue, starts, ends, out _, out _, out _, out _))
+                if (TryFindPlayerOnBombQueuePath(
+                        queue,
+                        starts,
+                        ends,
+                        out _,
+                        out _,
+                        out _,
+                        out _))
                 {
                     hitPlayer = true;
                     break;
@@ -1046,6 +1063,9 @@ public class YellowLouieKickAbility : MonoBehaviour, IPlayerAbility
                     EndYellowLouieBombSegments(queue);
 
                     frontBomb.PlayKickBounceSfx();
+                    // A reversão por colisão de personagem também deve ceder um
+                    // frame; caso contrário, uma colisão persistente trava a rotina.
+                    yield return null;
                     continue;
                 }
 
@@ -1897,6 +1917,12 @@ public class YellowLouieKickAbility : MonoBehaviour, IPlayerAbility
         if (movingBomb != null && hit.transform.IsChildOf(movingBomb.transform))
             return false;
 
+        // O cavaleiro fica imediatamente atrás da bomba. Ele nunca deve bloquear
+        // o próprio chute, inclusive quando BombPass torna essa sobreposição física
+        // possível durante o primeiro segmento.
+        if (hit.transform == transform || hit.transform.IsChildOf(transform))
+            return false;
+
         return playerLayer >= 0 && hit.gameObject.layer == playerLayer;
     }
 
@@ -2619,7 +2645,12 @@ public class YellowLouieKickAbility : MonoBehaviour, IPlayerAbility
             ? active.tilemap.transform
             : null;
 
-        Destructible prefab = source != null ? source.destructiblePrefab : null;
+        GameManager gm = GameManager.Instance != null
+            ? GameManager.Instance
+            : FindAnyObjectByType<GameManager>();
+        Destructible prefab = source != null
+            ? (gm != null ? gm.GetDestructiblePrefab(active.tile) : source.destructiblePrefab)
+            : null;
         if (prefab != null)
         {
             if (parent != null)
@@ -2628,9 +2659,6 @@ public class YellowLouieKickAbility : MonoBehaviour, IPlayerAbility
                 Instantiate(prefab, destroyWorld, Quaternion.identity);
         }
 
-        GameManager gm = GameManager.Instance != null
-            ? GameManager.Instance
-            : FindAnyObjectByType<GameManager>();
         if (gm != null && active != null)
             gm.OnDestructibleDestroyed(active.cell);
     }

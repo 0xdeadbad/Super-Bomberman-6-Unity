@@ -15,10 +15,81 @@ Use `Assets/Prefabs/Enemies/<EnemyName>.prefab` as the source of truth. Do not l
 4. Attach exactly one intended movement controller and a `CharacterHealth` component. Never attach a second movement controller, including a derived controller; they would issue competing movement commands to the same `Rigidbody2D`. Configure requested health on the prefab so every instance inherits it.
 5. Wire `AnimatedSpriteRenderer` children to the movement controller and keep sprite references local to the prefab. For every such child, assign its `SpriteRenderer.sprite` to exactly the same sprite as `AnimatedSpriteRenderer.idleSprite`.
 6. Set the initial visual state so exactly one directional child is enabled: use `Down` when the prefab has separate Up/Down/Left directional children; when it has one shared directional child, enable only that child. Keep all other directional children disabled. On the active Death child, disable both `AnimatedSpriteRenderer` and `SpriteRenderer` so it is invisible until the death flow enables it.
+7. For enemies placed in Stage 3-3, do not attach `PlayerWaterSubmersionEffect`. This stage's enemies must not show the water-submersion visual; preserve that rule for future Stage 3-3 enemy authoring.
+
+## Prefab Persistence
+
+- Author or repair prefab hierarchies through Unity's prefab APIs or the
+  Editor. Do not hand-serialize a new prefab YAML hierarchy: incomplete
+  Transform parent/child references can make Unity restore null parents and
+  lose renderer children during import.
+- After saving, load the prefab and confirm every expected visual child has
+  both `SpriteRenderer` and `AnimatedSpriteRenderer` components.
+
+## Custom Attack and Projectile Visuals
+
+Apply these rules when an enemy has additional attack-renderer children or a
+projectile that persists after impact:
+
+- During an attack, disable both the `AnimatedSpriteRenderer` and
+  `SpriteRenderer` of every walking-direction child. A one-frame attack still
+  needs `loop = false`; after its timed attack window, disable both components
+  of the attack child before restoring movement.
+- If a derived movement controller overrides death, disable every custom
+  attack visual (both components) before calling the base death flow, so only
+  the Death renderer can become visible.
+- Do not redeclare a serialized field name used by `EnemyMovementController`
+  (for example `health`). Reuse protected base state where available, or use
+  a distinct name only when a separate reference is truly needed.
+- When a derived enemy only needs health for a local diagnostic or one-off
+  decision, retrieve the existing `CharacterHealth` with a local
+  `TryGetComponent` value. Do not add another health field or health wrapper;
+  `CharacterHealth` remains the sole health owner.
+- Every enemy must have at least one second of post-hit invulnerability at
+  runtime. This prevents one explosion or a tightly timed chain from applying
+  multiple damage instances; enforce the floor in shared enemy initialization
+  when a legacy prefab has a smaller serialized value.
+- A projectile that remains as an impact effect must set its impact state and
+  disable its collider before applying damage or starting any blink/fade
+  routine. It must not move or damage again while it blinks, and should destroy
+  itself only after that visual routine finishes.
+
+## Inherited Movement and Split-on-Death Enemies
+
+When a new enemy is a variation of an existing controller, derive from that
+controller instead of copying its movement, death, health, or enemy-count
+logic. First inspect whether the parent is `sealed` and whether the extension
+points needed by the variation are `private`; make the smallest safe change to
+the parent (for example, a protected virtual count or timing property) rather
+than duplicating its lifecycle.
+
+- Put only the variation's behavior in the derived controller: a nearby-player
+  pursuit check, a charge condition, a speed adjustment, or a different child
+  count. Keep the parent behavior as the fallback when that condition is not
+  met.
+- For a split-on-death enemy, capture the snapped death tile before calling the
+  base death method. Spawn children before the base method only when the design
+  explicitly requires an immediate split; otherwise spawn after its death
+  animation. Notify `GameManager.NotifyEnemySpawned` using the actual child
+  count exactly once, and guard against duplicate spawns.
+- Reuse the mini enemy's existing initial-direction or spawn-direction API so
+  children separate cleanly. Do not attach more than one movement controller.
+- Create a named derived controller even when it contains no extra logic if it
+  documents an enemy's intended inheritance (for example, a Mini Baloon using
+  Mini Hogera behavior). This gives later variants a stable extension point.
+- Assign the derived controller and its serialized prefab references through
+  Unity's Editor/prefab APIs after scripts compile. Never replace a prefab's
+  `m_Script` reference by hand in YAML.
 
 ## Walk Animation Sequence
 
 When a movement direction provides exactly three walking frames (`1`, `2`, and `3`), configure its looping `animationSprite` sequence as `1-2-3-2`, rather than `1-2-3`. This gives the walk cycle a return stroke. Apply the rule independently to every authored direction; do not apply it to death animations unless that animation explicitly calls for it.
+
+When an enemy is blocked on every tile, keep its active walking
+`AnimatedSpriteRenderer` enabled with `idle = false`; a blocked enemy must not
+freeze visually. If changing direction disables and reenables separate
+directional renderers, restore the prior frame only after enabling the new
+renderer, because `OnEnable` resets the animation frame.
 
 ## Directional Sprite Rule
 
@@ -40,6 +111,8 @@ For World 3 enemies, configure the death renderer and the parent
 - Start the sequence with the enemy-specific death frames from its sprite
   sheet. When the sheet provides five such frames, they must occupy the first
   five positions in the sequence.
+- When the sheet provides only one enemy-specific death sprite, repeat that
+  sprite in each of the first five positions before the shared finish.
 - Append the appropriate shared finish:
   - Small enemy: the seven final death sprites used by `Funya`.
   - Large enemy: the eight final death sprites used by `LizardMan`.
@@ -61,4 +134,7 @@ are followed by the eight-frame `LizardMan` finish.
 - For every child with `AnimatedSpriteRenderer`, confirm `SpriteRenderer.sprite` equals its `idleSprite`.
 - Confirm exactly one directional `AnimatedSpriteRenderer` is enabled in the prefab: Down for separate directions, or the sole shared directional child.
 - Confirm the Death child's `AnimatedSpriteRenderer` and `SpriteRenderer` are both disabled initially.
+- For World 3 death animations, confirm the first five frames use the required
+  enemy-specific death sprites before the shared finish begins.
+- For Stage 3-3 enemies, confirm `PlayerWaterSubmersionEffect` is absent.
 - Check the Unity console for errors introduced by the new asset. Do not claim Play Mode or build validation unless run.

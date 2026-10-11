@@ -20,7 +20,7 @@ public class GamePauseController : MonoBehaviour
     }
 
     [Header("Pause Availability")]
-    private readonly string[] blockedSceneNames = { "TitleScreen", "WorldMap", "SkinSelect", "ControlsMenu", "BossRush", "SaveFileMenu", "BattleModeMenu", "Achievements" };
+    private readonly string[] blockedSceneNames = { "TitleScreen", "WorldMap", "Stage_World3Hall", "SkinSelect", "ControlsMenu", "BossRush", "SaveFileMenu", "BattleModeMenu", "Achievements" };
 
     [Header("SFX (Pause toggle)")]
     public AudioClip pauseSfx;
@@ -181,6 +181,12 @@ public class GamePauseController : MonoBehaviour
         string sceneName = scene.name;
         if (string.IsNullOrEmpty(sceneName))
             return false;
+
+        if (sceneName == StageAssets.World3HallPortalSelectionController.SceneName)
+        {
+            var duel = FindAnyObjectByType<StageAssets.World3HallStageSevenSequence>();
+            return duel != null && duel.DuelActive;
+        }
 
         if (blockedSceneNames != null)
         {
@@ -489,6 +495,8 @@ public class GamePauseController : MonoBehaviour
             GameMusicController.Instance.StopMusic();
 
         bool exitingBattleModeStage = IsBattleModeStageActive;
+        bool preserveNormalGameItems = sceneName == worldMapSceneName &&
+            !exitingBattleModeStage && !IsBossRushGameplayActive;
 
         ForceUnpause(resumeMusic: false);
 
@@ -511,6 +519,16 @@ public class GamePauseController : MonoBehaviour
         if (resetSessionForTitle)
         {
             PlayerPersistentStats.ResetSessionForReturnToTitle();
+        }
+        else if (preserveNormalGameItems)
+        {
+            foreach (var movement in FindObjectsByType<MovementController>())
+            {
+                if (movement.CompareTag("Player") && movement.gameObject.activeInHierarchy && !movement.isDead)
+                    PlayerPersistentStats.StageCaptureFromRuntime(movement, movement.GetComponent<BombController>());
+            }
+
+            PlayerPersistentStats.CommitStage();
         }
         else if (resetPlayersToBaseState)
         {

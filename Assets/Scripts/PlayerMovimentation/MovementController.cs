@@ -245,6 +245,7 @@ public class MovementController : MonoBehaviour, IKillable
     public bool InputLocked => inputLocked;
 
     private bool isEndingStage;
+    private bool resultPoseActive;
     public bool IsEndingStage => isEndingStage;
 
     protected Vector2 direction = Vector2.zero;
@@ -603,6 +604,10 @@ public class MovementController : MonoBehaviour, IKillable
             return;
 
         using var performanceSample = BattleModePerformanceMarkers.PlayerUpdate.Auto();
+
+        if (resultPoseActive && !inputLocked && !isEndingStage && !GamePauseController.IsPaused &&
+            InactivityAnimation.HasPoseCancelInput(PlayerId))
+            CancelResultPose();
 
         if (inputLocked || GamePauseController.IsPaused || isDead)
             return;
@@ -1077,7 +1082,9 @@ public class MovementController : MonoBehaviour, IKillable
         Vector2 pos = Rigidbody != null ? Rigidbody.position : (Vector2)transform.position;
 
         float rawMoveWorld = GetRawMoveWorldPerFixedFrame();
-        float moveWorld = GetQuantizedMoveWorldPerFixedFrame(movementDir, rawMoveWorld);
+        // This is only a turn preview.  It must not consume the fractional
+        // pixel progress that FixedUpdate will use for the actual movement.
+        float moveWorld = PeekQuantizedMoveWorldPerFixedFrame(movementDir, rawMoveWorld);
 
         if (moveWorld <= 0f)
             return false;
@@ -1506,13 +1513,21 @@ public class MovementController : MonoBehaviour, IKillable
         return GetWalkAnimationFrameTime() * ReferenceWalkAnimationFrameCount / frameCount;
     }
 
+    public float WalkAnimationDurationMultiplier { get; private set; } = 1f;
+
+    public void SetWalkAnimationDurationMultiplier(float multiplier)
+    {
+        WalkAnimationDurationMultiplier = Mathf.Max(0.01f, multiplier);
+        ApplyWalkAnimationTimingToMovementSprites();
+    }
+
     void ApplyWalkAnimationTiming(AnimatedSpriteRenderer renderer)
     {
         if (renderer == null)
             return;
 
         renderer.useSequenceDuration = false;
-        renderer.animationTime = GetWalkAnimationFrameTimeForFrameCount(GetAnimationFrameCount(renderer));
+        renderer.animationTime = GetWalkAnimationFrameTimeForFrameCount(GetAnimationFrameCount(renderer)) * WalkAnimationDurationMultiplier;
     }
 
     static int GetAnimationFrameCount(AnimatedSpriteRenderer renderer)
@@ -1728,6 +1743,11 @@ public class MovementController : MonoBehaviour, IKillable
         obstacleContactFilter = new ContactFilter2D { useLayerMask = true };
         obstacleContactFilter.SetLayerMask(obstacleMask);
         obstacleContactFilter.useTriggers = true;
+    }
+
+    public void RefreshObstacleContactFilter()
+    {
+        RebuildObstacleContactFilter();
     }
 
     private int GetObstacleHitCount(Vector2 worldPosition, Vector2 size)
@@ -2613,6 +2633,9 @@ public class MovementController : MonoBehaviour, IKillable
 
     private bool IsBlockedAtPosition(Vector2 targetPosition, Vector2 dirForSize, bool allowMovementAbilities = true)
     {
+        if (WaterCycleCurrent.BlocksPlayerForwardMovement(this, targetPosition))
+            return true;
+
         Vector2 size = GetBlockProbeSize(dirForSize);
 
         int hitCount = GetObstacleHitCount(targetPosition, size);
@@ -2657,7 +2680,9 @@ public class MovementController : MonoBehaviour, IKillable
 
                 var hitBomb = hitBombEarly != null ? hitBombEarly : hit.GetComponent<Bomb>();
                 if (hitBomb != null && !hitBomb.IsSolid)
+                {
                     continue;
+                }
 
                 if (allowMovementAbilities)
                 {
@@ -3807,8 +3832,40 @@ public class MovementController : MonoBehaviour, IKillable
             battleHud.OnPlayerRespawn(PlayerId);
     }
 
+    public void CancelPlayerPoses()
+    {
+        if (TryGetComponent<CorneredAnimation>(out var cornered))
+            cornered.CancelForExternalOverride();
+        if (TryGetComponent<InactivityAnimation>(out var inactivity))
+            inactivity.CancelForExternalOverride();
+        CancelResultPose();
+    }
+
+    private void CancelResultPose()
+    {
+        if (!resultPoseActive)
+            return;
+
+        resultPoseActive = false;
+        SetAnimEnabled(spriteRendererEndStage, false);
+        SetAnimEnabled(spriteRendererCheering, false);
+        SetAnimEnabled(spriteRendererTimeOver, false);
+        SetAnimEnabled(spriteRendererCornered, false);
+        if (isMounted)
+        {
+            var mount = GetComponentInChildren<MountVisualController>(true);
+            if (mount != null)
+                mount.CancelResultPose();
+        }
+        // Keep the round/portal flow locked; only release its presentation.
+        ForceIdleFacing(Vector2.down);
+    }
+
     public void PlayEndStageSequence(Vector2 portalCenter, bool snapToPortalCenter)
     {
+        CancelPlayerPoses();
+        resultPoseActive = true;
+        SetSuppressInactivityAnimation(true);
         if (IsPlayer())
             HudPortraitStateNotifier.SetVictory(PlayerId, true);
 
@@ -3905,6 +3962,9 @@ public class MovementController : MonoBehaviour, IKillable
             SetAnimEnabled(endSprite, true);
             endSprite.idle = false;
             endSprite.loop = false;
+            endSprite.pingPong = false;
+            endSprite.CurrentFrame = 0;
+            endSprite.RefreshFrame();
 
             if (endStageFrameCount > 0)
                 endSprite.animationTime = endStageTotalTime / endStageFrameCount;
@@ -3915,6 +3975,9 @@ public class MovementController : MonoBehaviour, IKillable
 
     public void PlayBattleTimeUpSequence()
     {
+        CancelPlayerPoses();
+        resultPoseActive = true;
+        SetSuppressInactivityAnimation(true);
         if (IsPlayer())
             HudPortraitStateNotifier.SetTimeUp(PlayerId, true);
 
@@ -4119,28 +4182,7 @@ public class MovementController : MonoBehaviour, IKillable
 
     public void ForceIdleUpConsideringMount()
     {
-        direction = Vector2.zero;
-        hasInput = false;
-        ResetDualInputAxes();
-
-        SetFacingDirection(Vector2.up, "ForceIdleUpConsideringMount");
-
-        if (isMounted)
-        {
-            var up = mountedSpriteUp != null ? mountedSpriteUp : spriteRendererUp;
-            SetDirection(Vector2.zero, up);
-
-            var rider = GetComponentInChildren<MountVisualController>(true);
-            if (rider != null)
-                rider.ForceIdleUp();
-        }
-        else
-        {
-            if (spriteRendererUp != null)
-                SetDirection(Vector2.zero, spriteRendererUp);
-            else
-                SetDirection(Vector2.zero, activeSpriteRenderer);
-        }
+        ForceMountedUpExclusive();
     }
 
     public void ForceMountedUpExclusive()
@@ -5445,6 +5487,28 @@ public class MovementController : MonoBehaviour, IKillable
             return;
 
         Debug.Log($"[BombEscape][Player:{name}] {message}", this);
+    }
+
+    private float PeekQuantizedMoveWorldPerFixedFrame(Vector2 moveDir, float rawWorldStep)
+    {
+        if (!useIntegerPixelSteps || pixelsPerUnit <= 0)
+            return rawWorldStep;
+
+        moveDir = NormalizeCardinal(moveDir);
+        if (moveDir == Vector2.zero)
+            return 0f;
+
+        float rawPixels = rawWorldStep * pixelsPerUnit;
+        bool movingHorizontal = Mathf.Abs(moveDir.x) > 0.01f;
+
+        // A direction change resets the live accumulator before its movement
+        // step, so preview it from zero as well without changing live state.
+        float accumulator = moveDir == lastMoveDirCardinal
+            ? (movingHorizontal ? accPixelsX : accPixelsY)
+            : 0f;
+
+        accumulator += rawPixels * (movingHorizontal ? Mathf.Sign(moveDir.x) : Mathf.Sign(moveDir.y));
+        return Mathf.Abs((int)accumulator) * PixelWorldStep;
     }
 
     private float GetOwnApproxRadius()

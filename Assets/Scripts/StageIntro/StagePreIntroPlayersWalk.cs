@@ -55,6 +55,8 @@ public sealed class StagePreIntroPlayersWalk : MonoBehaviour
     [Header("Movement")]
     [Tooltip("World units per second. (tileSize=1 => 3 means 3 tiles/sec)")]
     [SerializeField, Min(0.1f)] private float walkSpeedUnitsPerSecond = 3.5f;
+    [SerializeField, Min(0.01f)] private float walkAnimationDurationMultiplier = 1f;
+    private readonly Dictionary<MovementController, float> originalWalkTimings = new();
     [SerializeField, Min(0.01f)] private float reachEpsilon = 0.06f;
 
     [Header("Timings")]
@@ -112,6 +114,11 @@ public sealed class StagePreIntroPlayersWalk : MonoBehaviour
 
         if (entranceCameraFollow != null)
             entranceCameraFollow.enabled = false;
+    }
+
+    private void OnDisable()
+    {
+        StopWalkLoopSfx();
     }
 
     public void PrepareEntranceCamerasForIntro()
@@ -308,6 +315,172 @@ public sealed class StagePreIntroPlayersWalk : MonoBehaviour
             yield return WaitRealtime(delayAfterWalkSeconds);
     }
 
+    public IEnumerator PlayPortalEntry(Vector2 portalCenter)
+    {
+        StopWalkLoopSfx();
+
+        if (!TryCollectAndSetupPlayers(out var players, out _, out _, out _))
+            yield break;
+
+        var plans = new List<PortalWalkPlan>(players.Count);
+        foreach (var player in players)
+        {
+            Vector2 start = GetRootWorldPos(player.root, player.mover);
+            Vector2 goal = portalCenter;
+            var path = new List<Vector2> { start };
+            Vector2 position = start;
+            while (Mathf.Abs(position.x - goal.x) > 0.0001f)
+            {
+                position.x = Mathf.MoveTowards(position.x, goal.x, player.tileSize);
+                path.Add(position);
+            }
+            while (Mathf.Abs(position.y - goal.y) > 0.0001f)
+            {
+                position.y = Mathf.MoveTowards(position.y, goal.y, player.tileSize);
+                path.Add(position);
+            }
+            path.Add(goal + Vector2.up * (player.tileSize * 0.5f));
+            var distances = new List<float>(path.Count) { 0f };
+            for (int i = 1; i < path.Count; i++)
+                distances.Add(distances[i - 1] + Vector2.Distance(path[i - 1], path[i]) / player.tileSize);
+            plans.Add(new PortalWalkPlan { player = player, path = path, distances = distances });
+        }
+
+        plans.Sort((a, b) =>
+        {
+            int distanceOrder = a.distances[^1].CompareTo(b.distances[^1]);
+            return distanceOrder != 0 ? distanceOrder : a.player.playerId.CompareTo(b.player.playerId);
+        });
+
+        // Reserve each shared tile for the whole time its previous occupant uses
+        // it, including the portal blink. A constant speed per player lets everyone
+        // start together and keep walking instead of stopping at each reservation.
+        for (int i = 0; i < plans.Count; i++)
+        {
+            var plan = plans[i];
+            plan.secondsPerTile = plan.player.tileSize / Mathf.Max(0.1f, walkSpeedUnitsPerSecond);
+            for (int earlier = 0; earlier < i; earlier++)
+            {
+                var previous = plans[earlier];
+                for (int tile = 1; tile < plan.path.Count; tile++)
+                {
+                    int sharedTile = previous.path.IndexOf(plan.path[tile]);
+                    if (sharedTile < 0)
+                        continue;
+
+                    // The last half-tile segment and the absorption reserve the
+                    // portal base as well as the raised endpoint.
+                    float occupiedUntil = sharedTile >= previous.path.Count - 2
+                        ? previous.distances[^1] * previous.secondsPerTile + PortalAbsorptionSeconds
+                        : (previous.distances[sharedTile] + previous.distances[sharedTile + 1]) * 0.5f * previous.secondsPerTile;
+                    plan.secondsPerTile = Mathf.Max(plan.secondsPerTile,
+                        (occupiedUntil + 0.02f) / ((plan.distances[tile - 1] + plan.distances[tile]) * 0.5f));
+                }
+            }
+        }
+
+        StartWalkLoopSfx();
+        float elapsed = 0f;
+        int remaining = plans.Count;
+        try
+        {
+            while (remaining > 0)
+            {
+                if (GamePauseController.IsPaused)
+                {
+                    yield return null;
+                    continue;
+                }
+
+                foreach (var plan in plans)
+                {
+                    if (plan.finished)
+                        continue;
+
+                    if (plan.player.root == null || plan.player.mover == null)
+                    {
+                        plan.finished = true;
+                        remaining--;
+                        continue;
+                    }
+
+                    float arrivalTime = plan.distances[^1] * plan.secondsPerTile;
+                    if (elapsed < arrivalTime)
+                    {
+                        float progress = elapsed / plan.secondsPerTile;
+                        int tile = 0;
+                        while (tile < plan.path.Count - 2 && progress >= plan.distances[tile + 1])
+                            tile++;
+                        Vector2 direction = (plan.path[tile + 1] - plan.path[tile]).normalized;
+                        plan.player.mover.ApplyDirectionFromVector(direction);
+                        float segmentTiles = Vector2.Distance(plan.path[tile], plan.path[tile + 1]) / plan.player.tileSize;
+                        SetRootWorldPos(plan.player.root,
+                            Vector2.Lerp(plan.path[tile], plan.path[tile + 1], (progress - plan.distances[tile]) / segmentTiles));
+                        continue;
+                    }
+
+                    if (plan.blinkRenderers == null)
+                    {
+                        SnapRootToWorld(plan.player.root, plan.path[^1]);
+                        plan.player.mover.ApplyDirectionFromVector(Vector2.down);
+                        plan.blinkRenderers = plan.player.root.GetComponentsInChildren<SpriteRenderer>(true);
+                        plan.originalColors = new Color[plan.blinkRenderers.Length];
+                        for (int r = 0; r < plan.blinkRenderers.Length; r++)
+                            plan.originalColors[r] = plan.blinkRenderers[r].color;
+                    }
+
+                    float absorptionTime = elapsed - arrivalTime;
+                    if (absorptionTime >= PortalAbsorptionSeconds)
+                    {
+                        HidePlayerVisual(plan.player.mover);
+                        plan.player.root.gameObject.SetActive(false);
+                        for (int r = 0; r < plan.blinkRenderers.Length; r++)
+                            if (plan.blinkRenderers[r] != null)
+                                plan.blinkRenderers[r].color = plan.originalColors[r];
+                        plan.finished = true;
+                        remaining--;
+                        continue;
+                    }
+
+                    // Increasing phase speed makes the blink accelerate over 0.5 s.
+                    bool visible = Mathf.FloorToInt(4f * absorptionTime + 24f * absorptionTime * absorptionTime) % 2 == 0;
+                    for (int r = 0; r < plan.blinkRenderers.Length; r++)
+                    {
+                        if (plan.blinkRenderers[r] == null)
+                            continue;
+                        Color color = plan.originalColors[r];
+                        color.a *= visible ? PortalAbsorptionOpacity : 0f;
+                        plan.blinkRenderers[r].color = color;
+                    }
+                    var eggs = plan.player.mover.GetComponentInChildren<MountEggQueue>(true);
+                    if (eggs != null)
+                        eggs.ForceVisible(visible);
+                }
+
+                yield return null;
+                elapsed += Time.unscaledDeltaTime;
+            }
+        }
+        finally
+        {
+            StopWalkLoopSfx();
+        }
+    }
+
+    private const float PortalAbsorptionSeconds = 0.5f;
+    private const float PortalAbsorptionOpacity = 0.45f;
+
+    private sealed class PortalWalkPlan
+    {
+        public PlayerWalkData player;
+        public List<Vector2> path;
+        public List<float> distances;
+        public float secondsPerTile;
+        public bool finished;
+        public SpriteRenderer[] blinkRenderers;
+        public Color[] originalColors;
+    }
+
     private bool TryCollectAndSetupPlayers(
         out List<PlayerWalkData> players,
         out Dictionary<MovementController, Collider2D> cachedColliders,
@@ -341,6 +514,9 @@ public sealed class StagePreIntroPlayersWalk : MonoBehaviour
             Transform root = id.transform != null ? id.transform : move.transform;
 
             move.SetExternalMovementOverride(true);
+            if (!originalWalkTimings.ContainsKey(move))
+                originalWalkTimings[move] = move.WalkAnimationDurationMultiplier;
+            move.SetWalkAnimationDurationMultiplier(walkAnimationDurationMultiplier);
             move.SetInputLocked(true, true);
 
             if (!cachedColliders.ContainsKey(move))
@@ -971,6 +1147,13 @@ public sealed class StagePreIntroPlayersWalk : MonoBehaviour
 
     private void StopWalkLoopSfx()
     {
+        foreach (var entry in originalWalkTimings)
+        {
+            if (entry.Key == null)
+                continue;
+            entry.Key.SetWalkAnimationDurationMultiplier(entry.Value);
+        }
+        originalWalkTimings.Clear();
         walkSfxActive = false;
 
         if (walkSfxRoutine != null)

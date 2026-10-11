@@ -18,7 +18,7 @@ namespace StageAssets
         }
 
         [Header("Exit")]
-        [SerializeField] private World3BambooExitBlocker exitBlocker;
+        [SerializeField] private ExitBlocker exitBlocker;
 
         [Header("Fade")]
         [SerializeField] private Image fadeImage;
@@ -29,6 +29,17 @@ namespace StageAssets
         [Header("Room Cameras")]
         [SerializeField] private Camera sourceRoomCamera;
         [SerializeField] private Camera destinationRoomCamera;
+
+        [Header("Room 2 arrival")]
+        [SerializeField] private Stage34BatSwarmEffect roomTwoBatSwarmEffect;
+
+        [Header("Room cleanup")]
+        [SerializeField] private bool cancelFallingBarrelTraps;
+
+        [Header("Room Music")]
+        [Tooltip("Identifier configured in GameMusicController for the destination room.")]
+        [SerializeField] private string destinationRoomMusicId;
+        [SerializeField] private bool restoreDefaultMusicAfterTransition;
 
         [Header("Destination Player Positions")]
         [SerializeField] private PlayerDestination[] playerDestinations =
@@ -47,6 +58,7 @@ namespace StageAssets
         private readonly Dictionary<Behaviour, bool> previousEnabledStates = new();
         private bool transitionStarted;
         private float timeScaleBeforeTransition;
+        private Vector2 transitionSourcePosition;
 
         private void Awake()
         {
@@ -77,18 +89,24 @@ namespace StageAssets
                 return;
 
             transitionStarted = true;
+            transitionSourcePosition = sourceRoomCamera != null
+                ? sourceRoomCamera.transform.position
+                : player.transform.position;
             StartCoroutine(TransitionRoutine());
         }
 
         private IEnumerator TransitionRoutine()
         {
             FreezeGameplay();
+            if (cancelFallingBarrelTraps)
+                CancelFallingBarrelTraps();
             timeScaleBeforeTransition = Time.timeScale;
             Time.timeScale = 0f;
             yield return FadeTo(1f, fadeOutSeconds);
 
             // The screen is now black, so clean up the previous room without
             // letting a remaining fuse or explosion be heard during the move.
+            PrepareEnemyRoomsForTransition();
             BombController.ClearAllArmedBombsForRoomTransition();
 
             FaceLivingPlayersDown();
@@ -99,11 +117,56 @@ namespace StageAssets
             MoveLivingPlayersToDestination();
             SetCameraActive(sourceRoomCamera, false);
             SetCameraActive(destinationRoomCamera, true);
+            SnapDestinationCameraToPlayers();
+            PlayDestinationRoomMusic();
             yield return null;
 
             yield return FadeTo(0f, fadeInSeconds);
+            roomTwoBatSwarmEffect?.Play(destinationRoomCamera);
             Time.timeScale = timeScaleBeforeTransition;
             UnfreezeGameplay();
+        }
+
+        private void PrepareEnemyRoomsForTransition()
+        {
+            for (int i = 0; i < players.Count; i++)
+            {
+                MovementController player = players[i];
+                if (player != null && !player.isDead && TryGetDestination(player, out Vector2 destination))
+                {
+                    World3RoomProgressionController.PrepareEnemyRoomsForTransition(
+                        transitionSourcePosition,
+                        destination);
+                    return;
+                }
+            }
+        }
+
+        private static void CancelFallingBarrelTraps()
+        {
+            BarrelPillarTrap[] barrelTraps = FindObjectsByType<BarrelPillarTrap>(FindObjectsInactive.Exclude);
+            for (int i = 0; i < barrelTraps.Length; i++)
+                barrelTraps[i]?.CancelFallIfRunning();
+
+            foreach (SnowBallTrap snowBall in FindObjectsByType<SnowBallTrap>())
+                snowBall.CancelRollIfRunning();
+        }
+
+        private void PlayDestinationRoomMusic()
+        {
+            GameMusicController music = GameMusicController.Instance;
+            if (music == null)
+                return;
+
+            if (!string.IsNullOrWhiteSpace(destinationRoomMusicId))
+            {
+                bool started = music.PlayRoomMusic(destinationRoomMusicId);
+                if (started)
+                    return;
+            }
+
+            if (restoreDefaultMusicAfterTransition)
+                music.PlayDefaultMusic();
         }
 
         private void FreezeGameplay()
@@ -286,6 +349,15 @@ namespace StageAssets
             camera.enabled = active;
             if (camera.TryGetComponent(out AudioListener listener))
                 listener.enabled = active;
+        }
+
+        private void SnapDestinationCameraToPlayers()
+        {
+            if (destinationRoomCamera != null &&
+                destinationRoomCamera.TryGetComponent(out CameraFollowClamp2D cameraFollow))
+            {
+                cameraFollow.ForceSnapNow(refreshPlayersNow: true);
+            }
         }
     }
 }

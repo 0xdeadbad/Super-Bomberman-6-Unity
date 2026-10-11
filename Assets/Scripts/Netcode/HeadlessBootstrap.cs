@@ -24,7 +24,7 @@ namespace Assets.Scripts.Netcode
 
             var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
             var nm = NetworkManager.singleton;
-            var found = Object.FindObjectsByType<NetworkManager>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var found = Object.FindObjectsByType<NetworkManager>(FindObjectsInactive.Include);
             var mgr = nm != null ? nm : (found.Length > 0 ? found[0] : null);
 
             Debug.Log("[Net] HeadlessBootstrap(-server): scene=" + scene.name

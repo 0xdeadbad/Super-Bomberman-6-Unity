@@ -41,7 +41,7 @@ public static class BomberSkinSheetGenerator
         EditorApplication.delayCall += GenerateMissingBombermanSheets;
     }
 
-    [MenuItem("Tools/Bomberman/Generate Missing Bomber Skin Sheets")]
+    [MenuItem("Tools/Sprites/Generate Missing Bomber Skin Sheets")]
     public static void GenerateMissingBombermanSheets()
     {
         if (EditorApplication.isCompiling)
@@ -64,6 +64,7 @@ public static class BomberSkinSheetGenerator
         UpdatePlayerPrefabPalette1References();
 
         BomberHudPortraitGenerator.GenerateAll();
+        BomberCharacterSelectPortraitGenerator.GenerateAll();
     }
 
     static void UpdatePlayerPrefabPalette1References()
@@ -206,6 +207,7 @@ public static class BomberSkinSheetGenerator
 
             Dictionary<Color32, Color32> colorMap = BuildPaletteMap(palette, paletteColumn);
             Texture2D generated = Recolor(source, colorMap);
+            ApplyPaletteAnimationOverrides(sheetSource, skin, generated);
             File.WriteAllBytes(outputPath, generated.EncodeToPNG());
 
             Object.DestroyImmediate(generated);
@@ -217,6 +219,35 @@ public static class BomberSkinSheetGenerator
         Object.DestroyImmediate(palette);
 
         return generatedAny;
+    }
+
+    static void ApplyPaletteAnimationOverrides(CharacterSkinSheetSource source, BomberSkin skin, Texture2D generated)
+    {
+        if (source.CharacterFolderName != "Bomberman" || skin != BomberSkin.Palette2)
+            return;
+
+        const string overridePath = "Assets/Sprites/Bomberman2/Bomberman2IdleVictory.png";
+        Texture2D animation = LoadTexture(overridePath);
+        if (animation == null)
+            return;
+
+        int[] targetFrames = { 128, 129, 130, 131, 132, 108, 109, 110 };
+        Object[] sourceAssets = AssetDatabase.LoadAllAssetsAtPath(source.SourceSheetAssetPath);
+        foreach (Object asset in sourceAssets)
+        {
+            if (asset is not Sprite sprite || !TryGetFrameIndex(sprite.name, out int frame))
+                continue;
+
+            int index = Array.IndexOf(targetFrames, frame);
+            if (index < 0)
+                continue;
+
+            Rect rect = sprite.rect;
+            generated.SetPixels((int)rect.x, (int)rect.y, 64, 64, animation.GetPixels(index * 64, 0, 64, 64));
+        }
+
+        generated.Apply(false, false);
+        Object.DestroyImmediate(animation);
     }
 
     static IEnumerable<CharacterSkinSheetSource> FindCharacterSources()
@@ -289,7 +320,7 @@ public static class BomberSkinSheetGenerator
         return null;
     }
 
-    static Texture2D LoadTexture(string assetPath)
+    internal static Texture2D LoadTexture(string assetPath)
     {
         byte[] bytes = File.ReadAllBytes(assetPath);
         Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
@@ -304,7 +335,7 @@ public static class BomberSkinSheetGenerator
         return texture;
     }
 
-    static Dictionary<Color32, Color32> BuildPaletteMap(Texture2D palette, int targetColumn)
+    internal static Dictionary<Color32, Color32> BuildPaletteMap(Texture2D palette, int targetColumn)
     {
         Dictionary<Color32, Color32> map = new();
 
@@ -322,7 +353,7 @@ public static class BomberSkinSheetGenerator
         return map;
     }
 
-    static Texture2D Recolor(Texture2D source, Dictionary<Color32, Color32> colorMap)
+    internal static Texture2D Recolor(Texture2D source, Dictionary<Color32, Color32> colorMap)
     {
         Texture2D generated = new Texture2D(source.width, source.height, TextureFormat.RGBA32, false);
         Color32[] pixels = source.GetPixels32();

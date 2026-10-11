@@ -7,6 +7,13 @@ using UnityEngine.UI;
 
 public sealed class BattleModeMenu : MonoBehaviour
 {
+    private const string ItemSheetResourcesPath = "Sprites/BombItems/Itens";
+    private static readonly string[] ItemBorderSpriteNames =
+    {
+        "ItemBorder1", "ItemBorder2", "ItemBorder3",
+        "ItemBorder4", "ItemBorder5", "ItemBorder6"
+    };
+
     public static bool OpenDirectlyAtStageSelect { get; set; }
 
     private enum MenuState
@@ -44,7 +51,9 @@ public sealed class BattleModeMenu : MonoBehaviour
         PowerGlove,
         RandomEggsMin,
         RandomEggsMax,
-        Skull
+        Skull,
+        LineBomb,
+        SearchBomb
     }
 
     [System.Serializable]
@@ -97,6 +106,8 @@ public sealed class BattleModeMenu : MonoBehaviour
         public Outline mountOutline;
         public AnimatedSpriteRenderer mountRenderer;
         public MountedType mountedType = MountedType.None;
+        public readonly List<Image> optionBorderImages = new();
+        public readonly List<AnimatedSpriteRenderer> optionBorderRenderers = new();
         public readonly List<Image> optionImages = new();
         public readonly List<TextMeshProUGUI> optionTexts = new();
     }
@@ -282,12 +293,14 @@ public sealed class BattleModeMenu : MonoBehaviour
         ItemSelectEntryId.PowerBomb,
         ItemSelectEntryId.RubberBomb,
         ItemSelectEntryId.MagnetBomb,
+        ItemSelectEntryId.SearchBomb,
         ItemSelectEntryId.FullFire,
         ItemSelectEntryId.BombPass,
         ItemSelectEntryId.DestructiblePass,
         ItemSelectEntryId.InvincibleSuit,
         ItemSelectEntryId.Heart,
         ItemSelectEntryId.PowerGlove,
+        ItemSelectEntryId.LineBomb,
         ItemSelectEntryId.RandomEggsMin,
         ItemSelectEntryId.RandomEggsMax,
         ItemSelectEntryId.Skull
@@ -297,7 +310,10 @@ public sealed class BattleModeMenu : MonoBehaviour
     [SerializeField] private Vector2 itemSelectCellSize = new(150f, 52f);
     [SerializeField] private Vector2 itemSelectIconOffset = new(-42f, 0f);
     [SerializeField] private Vector2 itemSelectIconSize = new(40f, 40f);
+    private Sprite[] itemSelectBorderSprites;
+    [SerializeField, Min(0.01f)] private float itemSelectBorderFrameSeconds = 0.025f;
     [SerializeField, Min(0.01f)] private float itemSelectRandomEggIconScale = 1.35f;
+    [SerializeField] private Vector2 itemSelectRandomEggIconOffset = new(0f, 15f);
     [SerializeField] private Vector2 itemSelectAmountOffset = new(36f, 0f);
     [SerializeField] private Vector2 itemSelectAmountSize = new(64f, 36f);
     [SerializeField] private int itemSelectAmountFontSize = 28;
@@ -309,7 +325,6 @@ public sealed class BattleModeMenu : MonoBehaviour
     [SerializeField] private Vector2 itemSelectHintSize = new(900f, 120f);
     [SerializeField] private int itemSelectHintFontSize = 24;
     [SerializeField, Min(0f)] private float itemSelectHintLineSpacing = 18f;
-    [SerializeField] private bool logItemSelectHintStyle = true;
     [SerializeField, Min(0)] private int itemSelectMaxAmount = 99;
     [SerializeField] private Vector2 louieSelectRootOffset = Vector2.zero;
     [SerializeField] private Vector2 louieSelectGridOffset = new(0f, 8f);
@@ -439,7 +454,7 @@ public sealed class BattleModeMenu : MonoBehaviour
         "Start"
     };
 
-    private const int PlayerActionCount = (int)PlayerAction.ActionR + 1;
+    private const int PlayerActionCount = (int)PlayerAction.Select + 1;
 
     private readonly List<string> matchModeEntries = new();
 
@@ -534,11 +549,12 @@ public sealed class BattleModeMenu : MonoBehaviour
     private AnimatedSpriteRenderer musicSelectCursorRenderer;
     private RectTransform itemSelectRoot;
     private readonly List<RectTransform> itemSelectCells = new();
+    private readonly List<Image> itemSelectBorderImages = new();
+    private readonly List<AnimatedSpriteRenderer> itemSelectBorderRenderers = new();
     private readonly List<Image> itemSelectIconImages = new();
     private readonly List<TextMeshProUGUI> itemSelectIconLabelTexts = new();
     private readonly List<TextMeshProUGUI> itemSelectAmountTexts = new();
     private TextMeshProUGUI itemSelectHintText;
-    private bool itemSelectHintStyleLogged;
     private RectTransform itemSelectCursorRt;
     private Image itemSelectCursorImage;
     private AnimatedSpriteRenderer itemSelectCursorRenderer;
@@ -605,12 +621,14 @@ public sealed class BattleModeMenu : MonoBehaviour
         ItemSelectEntryId.PowerBomb,
         ItemSelectEntryId.RubberBomb,
         ItemSelectEntryId.MagnetBomb,
+        ItemSelectEntryId.SearchBomb,
         ItemSelectEntryId.FullFire,
         ItemSelectEntryId.BombPass,
         ItemSelectEntryId.DestructiblePass,
         ItemSelectEntryId.InvincibleSuit,
         ItemSelectEntryId.Heart,
         ItemSelectEntryId.PowerGlove,
+        ItemSelectEntryId.LineBomb,
         ItemSelectEntryId.RandomEggsMin,
         ItemSelectEntryId.RandomEggsMax,
         ItemSelectEntryId.Skull
@@ -3830,6 +3848,8 @@ public sealed class BattleModeMenu : MonoBehaviour
         itemSelectRoot.SetAsLastSibling();
 
         itemSelectCells.Clear();
+        itemSelectBorderImages.Clear();
+        itemSelectBorderRenderers.Clear();
         itemSelectIconImages.Clear();
         itemSelectIconLabelTexts.Clear();
         itemSelectAmountTexts.Clear();
@@ -3856,6 +3876,14 @@ public sealed class BattleModeMenu : MonoBehaviour
         cell.anchorMax = new Vector2(0.5f, 0.5f);
         cell.pivot = new Vector2(0.5f, 0.5f);
         itemSelectCells.Add(cell);
+
+        GameObject borderGo = new($"ItemBorder_{index}", typeof(RectTransform), typeof(Image), typeof(AnimatedSpriteRenderer));
+        borderGo.transform.SetParent(cell, false);
+        Image borderImage = borderGo.GetComponent<Image>();
+        borderImage.preserveAspect = true;
+        borderImage.raycastTarget = false;
+        itemSelectBorderImages.Add(borderImage);
+        itemSelectBorderRenderers.Add(borderGo.GetComponent<AnimatedSpriteRenderer>());
 
         GameObject iconGo = new($"ItemIcon_{index}", typeof(RectTransform), typeof(Image), typeof(Outline));
         iconGo.transform.SetParent(cell, false);
@@ -3961,6 +3989,9 @@ public sealed class BattleModeMenu : MonoBehaviour
             cell.sizeDelta = itemSelectCellSize;
             cell.anchoredPosition = GetItemSelectCellPosition(i, columns, rows);
 
+            bool isEnabled = GetWorkingBattleItemAmount(i) > 0;
+            UpdateItemSelectBorderVisual(i, i == selectedItemIndex, isEnabled);
+
             if (i < itemSelectIconImages.Count && itemSelectIconImages[i] != null)
             {
                 Image icon = itemSelectIconImages[i];
@@ -3968,11 +3999,14 @@ public sealed class BattleModeMenu : MonoBehaviour
                 iconRt.anchorMin = new Vector2(0.5f, 0.5f);
                 iconRt.anchorMax = new Vector2(0.5f, 0.5f);
                 iconRt.pivot = new Vector2(0.5f, 0.5f);
-                iconRt.anchoredPosition = itemSelectIconOffset;
+                iconRt.anchoredPosition = GetItemSelectIconPosition(i);
                 iconRt.sizeDelta = GetItemSelectIconSize(i);
                 icon.sprite = GetItemSelectIconSprite(i);
                 icon.enabled = icon.sprite != null;
-                icon.color = Color.white;
+                icon.color = isEnabled ? Color.white : louieSelectDisabledTint;
+
+                Image border = i < itemSelectBorderImages.Count ? itemSelectBorderImages[i] : null;
+                EnsureBattleModeIconLayering(border, icon);
             }
 
             if (i < itemSelectIconLabelTexts.Count && itemSelectIconLabelTexts[i] != null)
@@ -3986,7 +4020,7 @@ public sealed class BattleModeMenu : MonoBehaviour
                 labelRt.sizeDelta = GetItemSelectIconSize(i);
                 iconLabel.text = GetItemSelectIconLabel(i);
                 iconLabel.enabled = !string.IsNullOrEmpty(iconLabel.text);
-                iconLabel.color = Color.white;
+                iconLabel.color = isEnabled ? Color.white : louieSelectDisabledTint;
                 ApplySpecificSettingsTextStyle(iconLabel);
                 iconLabel.fontSize = Mathf.Max(8, Mathf.RoundToInt(itemSelectAmountFontSize * 0.55f));
                 iconLabel.alignment = TextAlignmentOptions.Center;
@@ -4002,7 +4036,7 @@ public sealed class BattleModeMenu : MonoBehaviour
                 amountRt.anchoredPosition = itemSelectAmountOffset;
                 amountRt.sizeDelta = itemSelectAmountSize;
                 amountText.text = GetWorkingBattleItemAmount(i).ToString();
-                amountText.color = i == selectedItemIndex ? GetMusicSelectTextColor(true) : GetMusicSelectTextColor(false);
+                amountText.color = GetMusicSelectTextColor(isEnabled && i == selectedItemIndex);
                 ApplySpecificSettingsTextStyle(amountText);
                 amountText.fontSize = itemSelectAmountFontSize;
                 amountText.alignment = TextAlignmentOptions.MidlineRight;
@@ -4024,7 +4058,6 @@ public sealed class BattleModeMenu : MonoBehaviour
             itemSelectHintText.fontSize = itemSelectHintFontSize;
             itemSelectHintText.lineSpacing = itemSelectHintLineSpacing;
             itemSelectHintText.alignment = TextAlignmentOptions.Center;
-            LogItemSelectHintStyle("UpdateItemSelectVisuals.AfterFinalStyle");
         }
 
         if (itemSelectCursorRt != null)
@@ -4038,37 +4071,6 @@ public sealed class BattleModeMenu : MonoBehaviour
         }
     }
 
-    private void LogItemSelectHintStyle(string context)
-    {
-        if (!logItemSelectHintStyle || itemSelectHintStyleLogged || itemSelectHintText == null)
-            return;
-
-        itemSelectHintStyleLogged = true;
-
-        string fontName = itemSelectHintText.font != null ? itemSelectHintText.font.name : "NULL";
-        string materialName = itemSelectHintText.fontMaterial != null ? itemSelectHintText.fontMaterial.name : "NULL";
-        string sharedMaterialName = itemSelectHintText.fontSharedMaterial != null ? itemSelectHintText.fontSharedMaterial.name : "NULL";
-        string leftPanelName = leftPanel != null ? leftPanel.name : "NULL";
-        string leftPanelFontName = leftPanel != null && leftPanel.OptionFontAsset != null ? leftPanel.OptionFontAsset.name : "NULL";
-        string leftPanelMaterialName = leftPanel != null && leftPanel.OptionFontMaterialPreset != null ? leftPanel.OptionFontMaterialPreset.name : "NULL";
-        RectTransform rt = itemSelectHintText.rectTransform;
-
-        Debug.Log(
-            $"[BattleModeMenu][ItemSelectHintStyle] {context} " +
-            $"leftPanel={leftPanelName} leftPanelFont={leftPanelFontName} leftPanelMaterial={leftPanelMaterialName} " +
-            $"font={fontName} fontMaterial={materialName} sharedMaterial={sharedMaterialName} " +
-            $"fontSize={itemSelectHintText.fontSize:0.###} lineSpacing={itemSelectHintText.lineSpacing:0.###} " +
-            $"fontStyle={itemSelectHintText.fontStyle} alignment={itemSelectHintText.alignment} " +
-            $"color={itemSelectHintText.color} faceColor={itemSelectHintText.faceColor} outlineColor={itemSelectHintText.outlineColor} " +
-            $"outlineWidth={itemSelectHintText.outlineWidth:0.###} extraPadding={itemSelectHintText.extraPadding} " +
-            $"wrapping={itemSelectHintText.textWrappingMode} overflow={itemSelectHintText.overflowMode} " +
-            $"currentUiScale={currentUiScale:0.###} rootScale={(itemSelectRoot != null ? itemSelectRoot.localScale.ToString() : "NULL")} " +
-            $"anchorMin={(rt != null ? rt.anchorMin.ToString() : "NULL")} anchorMax={(rt != null ? rt.anchorMax.ToString() : "NULL")} " +
-            $"pivot={(rt != null ? rt.pivot.ToString() : "NULL")} anchoredPosition={(rt != null ? rt.anchoredPosition.ToString() : "NULL")} " +
-            $"sizeDelta={(rt != null ? rt.sizeDelta.ToString() : "NULL")} localScale={(rt != null ? rt.localScale.ToString() : "NULL")}",
-            this);
-    }
-
     private Vector2 GetItemSelectCellPosition(int itemIndex, int columns, int rows)
     {
         int col = itemIndex % Mathf.Max(1, columns);
@@ -4080,9 +4082,120 @@ public sealed class BattleModeMenu : MonoBehaviour
 
     private Vector2 GetItemSelectIconSize(int index)
     {
-        return IsRandomEggEntry(index)
-            ? itemSelectIconSize * Mathf.Max(0.01f, itemSelectRandomEggIconScale)
-            : itemSelectIconSize;
+        float scale = IsRandomEggEntry(index)
+            ? Mathf.Max(0.01f, itemSelectRandomEggIconScale)
+            : 1f;
+
+        return itemSelectIconSize * scale;
+    }
+
+    private Vector2 GetItemSelectIconPosition(int index)
+    {
+        return itemSelectIconOffset + (IsRandomEggEntry(index) ? itemSelectRandomEggIconOffset : Vector2.zero);
+    }
+
+    private void UpdateItemSelectBorderVisual(int index, bool isSelected, bool isEnabled)
+    {
+        if (index < 0 || index >= itemSelectBorderImages.Count)
+            return;
+
+        Image borderImage = itemSelectBorderImages[index];
+        if (borderImage == null)
+            return;
+
+        Sprite[] frames = GetItemSelectBorderAnimationSprites();
+        bool showBorder = CanShowItemSelectBorder(index) && frames.Length > 0;
+        borderImage.gameObject.SetActive(showBorder);
+        if (!showBorder)
+            return;
+
+        RectTransform borderRt = borderImage.rectTransform;
+        borderRt.anchorMin = new Vector2(0.5f, 0.5f);
+        borderRt.anchorMax = new Vector2(0.5f, 0.5f);
+        borderRt.pivot = new Vector2(0.5f, 0.5f);
+        borderRt.anchoredPosition = itemSelectIconOffset;
+        borderRt.sizeDelta = GetItemSelectIconSize(index);
+        borderImage.color = isEnabled ? Color.white : louieSelectDisabledTint;
+
+        if (index >= itemSelectBorderRenderers.Count || itemSelectBorderRenderers[index] == null)
+        {
+            borderImage.sprite = frames[0];
+            return;
+        }
+
+        AnimatedSpriteRenderer borderRenderer = itemSelectBorderRenderers[index];
+        borderRenderer.idleSprite = frames[0];
+        borderRenderer.animationSprite = frames;
+        borderRenderer.animationTime = Mathf.Max(0.01f, itemSelectBorderFrameSeconds);
+        borderRenderer.useSequenceDuration = false;
+        borderRenderer.loop = true;
+        borderRenderer.pingPong = false;
+        borderRenderer.frameOffsets = null;
+        borderRenderer.SetExternalBaseLocalPosition(borderRt.localPosition);
+
+        if (isSelected)
+        {
+            if (borderRenderer.idle)
+                borderRenderer.CurrentFrame = 0;
+
+            borderRenderer.idle = false;
+            borderRenderer.SetFrozen(false);
+            borderRenderer.RefreshFrame();
+            return;
+        }
+
+        borderImage.sprite = frames[0];
+        borderRenderer.idle = true;
+        borderRenderer.SetFrozen(true);
+        borderRenderer.CurrentFrame = 0;
+        borderRenderer.RefreshFrame();
+    }
+
+    private Sprite[] GetItemSelectBorderAnimationSprites()
+    {
+        if (itemSelectBorderSprites != null &&
+            itemSelectBorderSprites.Length == ItemBorderSpriteNames.Length)
+        {
+            bool hasEveryBorder = true;
+            for (int i = 0; i < itemSelectBorderSprites.Length; i++)
+            {
+                if (itemSelectBorderSprites[i] == null)
+                {
+                    hasEveryBorder = false;
+                    break;
+                }
+            }
+
+            if (hasEveryBorder)
+                return itemSelectBorderSprites;
+        }
+
+        Sprite[] sheetSprites = Resources.LoadAll<Sprite>(ItemSheetResourcesPath);
+        Dictionary<string, Sprite> spritesByName = new();
+        for (int i = 0; i < sheetSprites.Length; i++)
+        {
+            Sprite sprite = sheetSprites[i];
+            if (sprite != null)
+                spritesByName[sprite.name] = sprite;
+        }
+
+        Sprite[] borderSprites = new Sprite[ItemBorderSpriteNames.Length];
+        for (int i = 0; i < ItemBorderSpriteNames.Length; i++)
+        {
+            if (!spritesByName.TryGetValue(ItemBorderSpriteNames[i], out borderSprites[i]))
+                return System.Array.Empty<Sprite>();
+        }
+
+        itemSelectBorderSprites = borderSprites;
+        return itemSelectBorderSprites;
+    }
+
+    private bool CanShowItemSelectBorder(int index)
+    {
+        GameManager.BattleModeHiddenDropEntry entry = GetItemSelectDropEntry(index);
+        return entry.Kind == GameManager.BattleModeHiddenDropEntryKind.Item &&
+            entry.ItemType != ItemType.FullFire &&
+            !LouieEggVisualColor.IsLouieEgg(entry.ItemType);
     }
 
     private Sprite GetItemSelectCursorSprite(int index)
@@ -4198,6 +4311,12 @@ public sealed class BattleModeMenu : MonoBehaviour
                 nextOrder.Add(entryId);
         }
 
+        // Migrate older scene-authored orders without changing persisted item indices.
+        nextOrder.Remove(ItemSelectEntryId.LineBomb);
+        nextOrder.Insert(nextOrder.IndexOf(ItemSelectEntryId.PowerGlove) + 1, ItemSelectEntryId.LineBomb);
+        nextOrder.Remove(ItemSelectEntryId.SearchBomb);
+        nextOrder.Insert(nextOrder.IndexOf(ItemSelectEntryId.MagnetBomb) + 1, ItemSelectEntryId.SearchBomb);
+
         bool changed = resolvedItemSelectEntryOrder.Count != nextOrder.Count;
         if (!changed)
         {
@@ -4267,12 +4386,14 @@ public sealed class BattleModeMenu : MonoBehaviour
             ItemSelectEntryId.ControlBomb => new GameManager.BattleModeHiddenDropEntry(GameManager.BattleModeHiddenDropEntryKind.Item, ItemType.ControlBomb),
             ItemSelectEntryId.PowerBomb => new GameManager.BattleModeHiddenDropEntry(GameManager.BattleModeHiddenDropEntryKind.Item, ItemType.PowerBomb),
             ItemSelectEntryId.RubberBomb => new GameManager.BattleModeHiddenDropEntry(GameManager.BattleModeHiddenDropEntryKind.Item, ItemType.RubberBomb),
+            ItemSelectEntryId.SearchBomb => new GameManager.BattleModeHiddenDropEntry(GameManager.BattleModeHiddenDropEntryKind.Item, ItemType.SearchBomb),
             ItemSelectEntryId.MagnetBomb => new GameManager.BattleModeHiddenDropEntry(GameManager.BattleModeHiddenDropEntryKind.Item, ItemType.MagnetBomb),
             ItemSelectEntryId.FullFire => new GameManager.BattleModeHiddenDropEntry(GameManager.BattleModeHiddenDropEntryKind.Item, ItemType.FullFire),
             ItemSelectEntryId.BombPass => new GameManager.BattleModeHiddenDropEntry(GameManager.BattleModeHiddenDropEntryKind.Item, ItemType.BombPass),
             ItemSelectEntryId.DestructiblePass => new GameManager.BattleModeHiddenDropEntry(GameManager.BattleModeHiddenDropEntryKind.Item, ItemType.DestructiblePass),
             ItemSelectEntryId.InvincibleSuit => new GameManager.BattleModeHiddenDropEntry(GameManager.BattleModeHiddenDropEntryKind.Item, ItemType.InvincibleSuit),
             ItemSelectEntryId.Heart => new GameManager.BattleModeHiddenDropEntry(GameManager.BattleModeHiddenDropEntryKind.Item, ItemType.Heart),
+            ItemSelectEntryId.LineBomb => new GameManager.BattleModeHiddenDropEntry(GameManager.BattleModeHiddenDropEntryKind.Item, ItemType.LineBomb),
             ItemSelectEntryId.PowerGlove => new GameManager.BattleModeHiddenDropEntry(GameManager.BattleModeHiddenDropEntryKind.Item, ItemType.PowerGlove),
             ItemSelectEntryId.RandomEggsMin => new GameManager.BattleModeHiddenDropEntry(GameManager.BattleModeHiddenDropEntryKind.RandomEggsMin),
             ItemSelectEntryId.RandomEggsMax => new GameManager.BattleModeHiddenDropEntry(GameManager.BattleModeHiddenDropEntryKind.RandomEggsMax),
@@ -4385,6 +4506,14 @@ public sealed class BattleModeMenu : MonoBehaviour
 
         spriteRenderer = prefab.GetComponentInChildren<SpriteRenderer>(true);
         return spriteRenderer != null ? spriteRenderer.sprite : null;
+    }
+
+    private static void EnsureBattleModeIconLayering(Image border, Image icon)
+    {
+        if (border == null || icon == null || border.transform.parent != icon.transform.parent)
+            return;
+
+        border.transform.SetSiblingIndex(Mathf.Max(0, icon.transform.GetSiblingIndex() - 1));
     }
 
     private IEnumerator OpenLouieSelectMenu()
@@ -5080,6 +5209,9 @@ public sealed class BattleModeMenu : MonoBehaviour
 
         for (int i = 0; i < GetHandicapOptionColumnCount(); i++)
         {
+            Image border = CreateHandicapImage(row.root, $"HandicapOptionBorder_{rowIndex}_{i}", false);
+            row.optionBorderImages.Add(border);
+            row.optionBorderRenderers.Add(border.gameObject.AddComponent<AnimatedSpriteRenderer>());
             row.optionImages.Add(CreateHandicapImage(row.root, $"HandicapOption_{rowIndex}_{i}", true));
             row.optionTexts.Add(CreateHandicapText(row.root, $"HandicapValue_{rowIndex}_{i}"));
         }
@@ -5217,7 +5349,7 @@ public sealed class BattleModeMenu : MonoBehaviour
             row.playerImage.color = Color.white;
 
             UpdateHandicapMountVisual(row, player);
-            UpdateHandicapOptionVisuals(row, player);
+            UpdateHandicapOptionVisuals(rowIndex, row, player);
         }
 
         if (handicapSelectHintText != null)
@@ -5315,10 +5447,13 @@ public sealed class BattleModeMenu : MonoBehaviour
         return skinSelectMenu.GetBattleModeTeamPreviewSprite(playerId, previewFrame);
     }
 
-    private void UpdateHandicapOptionVisuals(HandicapRowVisual row, SaveData.BattleModeHandicapPlayerSave player)
+    private void UpdateHandicapOptionVisuals(int rowIndex, HandicapRowVisual row, SaveData.BattleModeHandicapPlayerSave player)
     {
         for (int i = 0; i < row.optionImages.Count; i++)
         {
+            bool isEnabled = IsHandicapOptionEnabled(i, player);
+            UpdateHandicapOptionBorderVisual(rowIndex, row, i, rowIndex == selectedHandicapRow && selectedHandicapColumn == i + 1, isEnabled);
+
             Image image = row.optionImages[i];
             TextMeshProUGUI text = row.optionTexts[i];
             RectTransform imageRt = image.rectTransform;
@@ -5326,10 +5461,13 @@ public sealed class BattleModeMenu : MonoBehaviour
             imageRt.anchorMax = new Vector2(0.5f, 0.5f);
             imageRt.pivot = new Vector2(0.5f, 0.5f);
             imageRt.anchoredPosition = GetHandicapOptionPosition(i);
-            imageRt.sizeDelta = handicapSelectOptionIconSize;
+            imageRt.sizeDelta = GetHandicapOptionIconSize(i);
             image.sprite = GetHandicapOptionSprite(i, player);
-            image.color = IsHandicapOptionEnabled(i, player) ? Color.white : louieSelectDisabledTint;
+            image.color = isEnabled ? Color.white : louieSelectDisabledTint;
             image.enabled = image.sprite != null;
+
+            Image border = i < row.optionBorderImages.Count ? row.optionBorderImages[i] : null;
+            EnsureBattleModeIconLayering(border, image);
 
             RectTransform textRt = text.rectTransform;
             textRt.anchorMin = new Vector2(0.5f, 0.5f);
@@ -5338,11 +5476,68 @@ public sealed class BattleModeMenu : MonoBehaviour
             textRt.anchoredPosition = GetHandicapOptionPosition(i) + handicapSelectOptionNumberOffset;
             textRt.sizeDelta = handicapSelectOptionTextSize;
             text.text = GetHandicapOptionText(i, player);
-            text.color = GetMusicSelectTextColor(IsHandicapOptionEnabled(i, player));
+            text.color = GetMusicSelectTextColor(isEnabled);
             text.fontSize = handicapSelectOptionFontSize;
             text.alignment = TextAlignmentOptions.Center;
             ApplySpecificSettingsTextStyle(text);
         }
+    }
+
+    private void UpdateHandicapOptionBorderVisual(int rowIndex, HandicapRowVisual row, int optionIndex, bool isSelected, bool isEnabled)
+    {
+        if (row == null || optionIndex < 0 || optionIndex >= row.optionBorderImages.Count)
+            return;
+
+        Image borderImage = row.optionBorderImages[optionIndex];
+        if (borderImage == null)
+            return;
+
+        Sprite[] frames = GetItemSelectBorderAnimationSprites();
+        bool showBorder = optionIndex != 8 && frames.Length > 0;
+        borderImage.gameObject.SetActive(showBorder);
+        if (!showBorder)
+            return;
+
+        RectTransform borderRt = borderImage.rectTransform;
+        borderRt.anchorMin = new Vector2(0.5f, 0.5f);
+        borderRt.anchorMax = new Vector2(0.5f, 0.5f);
+        borderRt.pivot = new Vector2(0.5f, 0.5f);
+        borderRt.anchoredPosition = GetHandicapOptionPosition(optionIndex);
+        borderRt.sizeDelta = GetHandicapOptionIconSize(optionIndex);
+        borderImage.color = isEnabled ? Color.white : louieSelectDisabledTint;
+
+        if (optionIndex >= row.optionBorderRenderers.Count || row.optionBorderRenderers[optionIndex] == null)
+        {
+            borderImage.sprite = frames[0];
+            return;
+        }
+
+        AnimatedSpriteRenderer borderRenderer = row.optionBorderRenderers[optionIndex];
+        borderRenderer.idleSprite = frames[0];
+        borderRenderer.animationSprite = frames;
+        borderRenderer.animationTime = Mathf.Max(0.01f, itemSelectBorderFrameSeconds);
+        borderRenderer.useSequenceDuration = false;
+        borderRenderer.loop = true;
+        borderRenderer.pingPong = false;
+        borderRenderer.frameOffsets = null;
+        borderRenderer.SetExternalBaseLocalPosition(borderRt.localPosition);
+
+        if (isSelected)
+        {
+            if (borderRenderer.idle)
+                borderRenderer.CurrentFrame = 0;
+
+            borderRenderer.idle = false;
+            borderRenderer.SetFrozen(false);
+            borderRenderer.RefreshFrame();
+            return;
+        }
+
+        borderImage.sprite = frames[0];
+        borderRenderer.idle = true;
+        borderRenderer.SetFrozen(true);
+        borderRenderer.CurrentFrame = 0;
+        borderRenderer.RefreshFrame();
     }
 
     private Sprite GetHandicapOptionSprite(int optionIndex, SaveData.BattleModeHandicapPlayerSave player)
@@ -5356,7 +5551,7 @@ public sealed class BattleModeMenu : MonoBehaviour
             4 => GetHandicapBombTypeSprite(player),
             5 => GetHandicapMovementSprite(player),
             6 => GetItemIconSprite(ItemType.BombPunch),
-            7 => GetItemIconSprite(ItemType.PowerGlove),
+            7 => GetItemIconSprite(player != null && player.lineBomb ? ItemType.LineBomb : ItemType.PowerGlove),
             8 => GetItemIconSprite(ItemType.FullFire),
             9 => GetItemIconSprite(ItemType.DestructiblePass),
             _ => null
@@ -5375,6 +5570,7 @@ public sealed class BattleModeMenu : MonoBehaviour
             BattleModeHandicapBombType.Rubber => GetItemIconSprite(ItemType.RubberBomb),
             BattleModeHandicapBombType.Pierce => GetItemIconSprite(ItemType.PierceBomb),
             BattleModeHandicapBombType.Control => GetItemIconSprite(ItemType.ControlBomb),
+            BattleModeHandicapBombType.Search => GetItemIconSprite(ItemType.SearchBomb),
             BattleModeHandicapBombType.Magnet => GetItemIconSprite(ItemType.MagnetBomb),
             _ => GetItemIconSprite(ItemType.ExtraBomb)
         };
@@ -5420,7 +5616,7 @@ public sealed class BattleModeMenu : MonoBehaviour
             4 => player.bombType != (int)BattleModeHandicapBombType.Default,
             5 => IsHandicapKickEnabled(player),
             6 => player.punchBomb,
-            7 => player.powerGlove,
+            7 => player.powerGlove || player.lineBomb,
             8 => player.fullFire,
             9 => player.destructiblePass,
             _ => false
@@ -5468,7 +5664,8 @@ public sealed class BattleModeMenu : MonoBehaviour
                 break;
 
             case 5:
-                player.bombType = WrapValue(player.bombType + delta, 0, 5);
+                player.bombType = WrapValue(player.bombType + delta,
+                    (int)BattleModeHandicapBombType.Default, (int)BattleModeHandicapBombType.Search);
                 break;
 
             case 6:
@@ -5480,7 +5677,10 @@ public sealed class BattleModeMenu : MonoBehaviour
                 break;
 
             case 8:
-                player.powerGlove = !player.powerGlove;
+                int handAbility = player.lineBomb ? 2 : player.powerGlove ? 1 : 0;
+                handAbility = WrapValue(handAbility + delta, 0, 2);
+                player.powerGlove = handAbility == 1;
+                player.lineBomb = handAbility == 2;
                 break;
 
             case 9:
@@ -5490,6 +5690,7 @@ public sealed class BattleModeMenu : MonoBehaviour
             case 10:
                 player.destructiblePass = !player.destructiblePass;
                 break;
+
         }
 
         SaveCurrentBattleHandicap();
@@ -6220,6 +6421,11 @@ public sealed class BattleModeMenu : MonoBehaviour
 
         ApplyTeamLabelFont(text);
         LocalizedTmpFontFallback.Apply(text);
+    }
+
+    private Vector2 GetHandicapOptionIconSize(int optionIndex)
+    {
+        return handicapSelectOptionIconSize;
     }
 
     private void RefreshPlayerSelectEntries()

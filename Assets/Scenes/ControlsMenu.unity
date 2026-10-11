@@ -1457,7 +1457,6 @@ MonoBehaviour:
   defaultMusicLoop: {fileID: 0}
   deathMusic: {fileID: 8300000, guid: 47abcd3e68c750440b01643ffd998e93, type: 3}
   defaultMusicVolume: 0.8
-  defaultMusicLoopVolume: 0.8
 --- !u!82 &1560934952
 AudioSource:
   m_ObjectHideFlags: 0
@@ -1685,7 +1684,6 @@ MonoBehaviour:
   fadeImage: {fileID: 336813435}
   fadeDuration: 0.5
   maxFadeStepDelta: 0.033
-  logOpenFlowDiagnostics: 1
   controlsMusic: {fileID: 8300000, guid: cb664d6e50930ce42ba645a9be8cc7fe, type: 3}
   controlsMusicLoop: {fileID: 0}
   controlsMusicVolume: 0.5

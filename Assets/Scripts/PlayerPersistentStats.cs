@@ -20,25 +20,27 @@ public static class PlayerPersistentStats
 
     public sealed class PlayerState
     {
-        public int Life = 9;
+        public int Life = 999;
         public int BombAmount = 9;
         public int ExplosionRadius = 9;
         public int SpeedInternal = BaseSpeedNormal + (SpeedStep * 9);
-        public bool CanKickBombs = true;
+        public bool CanKickBombs = false;
         public bool CanPunchBombs = true;
         public bool HasPowerGlove = true;
+        public bool HasLineBomb = false;
         public bool CanPassBombs = false;
         public bool CanPassDestructibles = true;
-        public bool HasPierceBombs = true;
-        public bool HasControlBombs = false;
+        public bool HasPierceBombs = false;
+        public bool HasControlBombs = true;
         public bool HasPowerBomb = false;
         public bool HasRubberBombs = false;
         public bool HasMagnetBomb = false;
+        public bool HasSearchBomb = false;
         public bool HasFullFire = false;
 
         public MountedType MountedLouie = MountedType.None;
-        public BomberCharacter Character = BomberCharacter.LadyBomber;
-        public BomberSkin Skin = BomberSkin.Palette25;
+        public BomberCharacter Character = BomberCharacter.Bomberman;
+        public BomberSkin Skin = BomberSkin.Palette1;
 
         public readonly List<ItemType> QueuedEggs = new(8);
 
@@ -215,6 +217,7 @@ public static class PlayerPersistentStats
         s.CanKickBombs = false;
         s.CanPunchBombs = false;
         s.HasPowerGlove = false;
+        s.HasLineBomb = false;
         s.CanPassBombs = false;
         s.CanPassDestructibles = false;
         s.HasPierceBombs = false;
@@ -222,6 +225,7 @@ public static class PlayerPersistentStats
         s.HasPowerBomb = false;
         s.HasRubberBombs = false;
         s.HasMagnetBomb = false;
+        s.HasSearchBomb = false;
         s.HasFullFire = false;
 
         s.MountedLouie = MountedType.None;
@@ -248,6 +252,7 @@ public static class PlayerPersistentStats
         s.CanKickBombs = false;
         s.CanPunchBombs = false;
         s.HasPowerGlove = false;
+        s.HasLineBomb = false;
         s.CanPassBombs = false;
         s.CanPassDestructibles = false;
         s.HasPierceBombs = false;
@@ -255,6 +260,7 @@ public static class PlayerPersistentStats
         s.HasPowerBomb = false;
         s.HasRubberBombs = false;
         s.HasMagnetBomb = false;
+        s.HasSearchBomb = false;
         s.HasFullFire = false;
 
         s.MountedLouie = MountedType.None;
@@ -288,6 +294,7 @@ public static class PlayerPersistentStats
         s.CanKickBombs = false;
         s.CanPunchBombs = false;
         s.HasPowerGlove = false;
+        s.HasLineBomb = false;
         s.CanPassBombs = false;
         s.CanPassDestructibles = false;
 
@@ -296,6 +303,7 @@ public static class PlayerPersistentStats
         s.HasPowerBomb = false;
         s.HasRubberBombs = false;
         s.HasMagnetBomb = false;
+        s.HasSearchBomb = false;
         s.HasFullFire = false;
 
         s.MountedLouie = MountedType.None;
@@ -388,6 +396,7 @@ public static class PlayerPersistentStats
         bool runtimePower = false;
         bool runtimeRubber = false;
         bool runtimeMagnet = false;
+        bool runtimeSearch = false;
 
         if (abilitySystem != null)
         {
@@ -423,6 +432,7 @@ public static class PlayerPersistentStats
 
             var magnet = abilitySystem.Get<MagnetBombAbility>(MagnetBombAbility.AbilityId);
             runtimeMagnet = magnet != null && magnet.IsEnabled;
+            runtimeSearch = abilitySystem.IsEnabled(SearchBombAbility.AbilityId);
         }
 
         if (runtimeKick)
@@ -440,7 +450,15 @@ public static class PlayerPersistentStats
             PersistPunchAbility(movement, s, abilitySystem);
 
         if (runtimeGlove)
+        {
             s.HasPowerGlove = true;
+            s.HasLineBomb = false;
+        }
+        else if (abilitySystem != null && abilitySystem.IsEnabled(LineBombAbility.AbilityId))
+        {
+            s.HasLineBomb = true;
+            s.HasPowerGlove = false;
+        }
 
         if (runtimeDestructiblePass)
             s.CanPassDestructibles = true;
@@ -450,6 +468,17 @@ public static class PlayerPersistentStats
 
         if (runtimeMagnet)
             s.HasMagnetBomb = true;
+        if (runtimeSearch)
+        {
+            s.HasSearchBomb = true;
+            s.HasMagnetBomb = false;
+            s.HasControlBombs = false;
+            s.HasPierceBombs = false;
+            s.HasPowerBomb = false;
+            s.HasRubberBombs = false;
+        }
+        else if (runtimeMagnet || runtimeControl || runtimePierce || runtimePower || runtimeRubber)
+            s.HasSearchBomb = false;
 
         if (runtimeControl)
         {
@@ -499,10 +528,17 @@ public static class PlayerPersistentStats
         else
             RemoveBattleModeComAbility<BattleModeComPunchBombAbility>(playerGo);
 
-        if (s.HasPowerGlove)
+        if (s.HasPowerGlove && !s.HasLineBomb)
             EnsureBattleModeComAbility<BattleModeComPowerGloveAbility>(playerGo, playerId);
         else
             RemoveBattleModeComAbility<BattleModeComPowerGloveAbility>(playerGo);
+
+        bool hasPurpleLine = playerGo.TryGetComponent<AbilitySystem>(out var abilities) &&
+            abilities.IsEnabled(PurpleLouieBombLineAbility.AbilityId);
+        if (s.HasLineBomb || hasPurpleLine)
+            EnsureBattleModeComAbility<BattleModeComPurpleLouieBombLineAbility>(playerGo, playerId);
+        else
+            RemoveBattleModeComAbility<BattleModeComPurpleLouieBombLineAbility>(playerGo);
     }
 
     static void EnsureBattleModeComKickBombAbility(GameObject playerGo, int playerId)
@@ -561,7 +597,10 @@ public static class PlayerPersistentStats
 
         T ability = playerGo.GetComponent<T>();
         if (ability != null)
+        {
+            ability.enabled = false;
             Object.Destroy(ability);
+        }
     }
 
     public static void LoadInto(int playerId, MovementController movement, BombController bomb)
@@ -620,11 +659,17 @@ public static class PlayerPersistentStats
             if (s.HasPowerGlove) abilitySystem.Enable(PowerGloveAbility.AbilityId);
             else abilitySystem.Disable(PowerGloveAbility.AbilityId);
 
+            if (s.HasLineBomb) abilitySystem.Enable(LineBombAbility.AbilityId);
+            else abilitySystem.Disable(LineBombAbility.AbilityId);
+
             if (s.HasFullFire) abilitySystem.Enable(FullFireAbility.AbilityId);
             else abilitySystem.Disable(FullFireAbility.AbilityId);
 
             if (s.HasMagnetBomb) abilitySystem.Enable(MagnetBombAbility.AbilityId);
             else abilitySystem.Disable(MagnetBombAbility.AbilityId);
+
+            if (s.HasSearchBomb) abilitySystem.Enable(SearchBombAbility.AbilityId);
+            else abilitySystem.Disable(SearchBombAbility.AbilityId);
 
             if (s.CanPassBombs) abilitySystem.Enable(BombPassAbility.AbilityId);
             else abilitySystem.Disable(BombPassAbility.AbilityId);
@@ -775,6 +820,7 @@ public static class PlayerPersistentStats
         to.CanKickBombs = from.CanKickBombs;
         to.CanPunchBombs = from.CanPunchBombs;
         to.HasPowerGlove = from.HasPowerGlove;
+        to.HasLineBomb = from.HasLineBomb;
         to.CanPassBombs = from.CanPassBombs;
         to.CanPassDestructibles = from.CanPassDestructibles;
         to.HasPierceBombs = from.HasPierceBombs;
@@ -782,6 +828,7 @@ public static class PlayerPersistentStats
         to.HasPowerBomb = from.HasPowerBomb;
         to.HasRubberBombs = from.HasRubberBombs;
         to.HasMagnetBomb = from.HasMagnetBomb;
+        to.HasSearchBomb = from.HasSearchBomb;
         to.HasFullFire = from.HasFullFire;
 
         to.MountedLouie = from.MountedLouie;
@@ -861,6 +908,7 @@ public static class PlayerPersistentStats
         s.CanKickBombs = false;
         s.CanPunchBombs = false;
         s.HasPowerGlove = false;
+        s.HasLineBomb = false;
         s.CanPassBombs = false;
         s.CanPassDestructibles = false;
         s.HasPierceBombs = false;
@@ -868,6 +916,7 @@ public static class PlayerPersistentStats
         s.HasPowerBomb = false;
         s.HasRubberBombs = false;
         s.HasMagnetBomb = false;
+        s.HasSearchBomb = false;
         s.HasFullFire = false;
 
         s.MountedLouie = MountedType.None;
@@ -892,6 +941,7 @@ public static class PlayerPersistentStats
         s.CanKickBombs = false;
         s.CanPunchBombs = false;
         s.HasPowerGlove = false;
+        s.HasLineBomb = false;
         s.CanPassBombs = false;
         s.CanPassDestructibles = false;
         s.HasPierceBombs = false;
@@ -899,6 +949,7 @@ public static class PlayerPersistentStats
         s.HasPowerBomb = false;
         s.HasRubberBombs = false;
         s.HasMagnetBomb = false;
+        s.HasSearchBomb = false;
         s.HasFullFire = false;
 
         s.MountedLouie = MountedType.None;
@@ -973,7 +1024,8 @@ public static class PlayerPersistentStats
             : MountedType.None;
 
         state.CanPunchBombs = player.punchBomb;
-        state.HasPowerGlove = player.powerGlove;
+        state.HasLineBomb = player.lineBomb;
+        state.HasPowerGlove = player.powerGlove && !state.HasLineBomb;
         state.HasFullFire = player.fullFire;
         state.CanPassDestructibles = player.destructiblePass;
 
@@ -994,6 +1046,7 @@ public static class PlayerPersistentStats
         state.HasPowerBomb = false;
         state.HasRubberBombs = false;
         state.HasMagnetBomb = false;
+        state.HasSearchBomb = false;
 
         switch (bombType)
         {
@@ -1011,6 +1064,10 @@ public static class PlayerPersistentStats
 
             case BattleModeHandicapBombType.Control:
                 state.HasControlBombs = true;
+                break;
+
+            case BattleModeHandicapBombType.Search:
+                state.HasSearchBomb = true;
                 break;
 
             case BattleModeHandicapBombType.Magnet:
@@ -1048,6 +1105,7 @@ public static class PlayerPersistentStats
         s.CanKickBombs = false;
         s.CanPunchBombs = false;
         s.HasPowerGlove = false;
+        s.HasLineBomb = false;
         s.CanPassBombs = false;
         s.CanPassDestructibles = false;
         s.HasPierceBombs = false;
@@ -1055,6 +1113,7 @@ public static class PlayerPersistentStats
         s.HasPowerBomb = false;
         s.HasRubberBombs = false;
         s.HasMagnetBomb = false;
+        s.HasSearchBomb = false;
         s.HasFullFire = false;
 
         s.MountedLouie = MountedType.None;
@@ -1172,7 +1231,13 @@ public static class PlayerPersistentStats
                 s.CanPunchBombs = true;
                 break;
 
+            case ItemType.LineBomb:
+                s.HasLineBomb = true;
+                s.HasPowerGlove = false;
+                break;
+
             case ItemType.PowerGlove:
+                s.HasLineBomb = false;
                 s.HasPowerGlove = true;
                 break;
 
@@ -1195,6 +1260,7 @@ public static class PlayerPersistentStats
                 s.HasPowerBomb = false;
                 s.HasRubberBombs = false;
                 s.HasMagnetBomb = false;
+                s.HasSearchBomb = false;
                 break;
 
             case ItemType.ControlBomb:
@@ -1203,6 +1269,7 @@ public static class PlayerPersistentStats
                 s.HasPowerBomb = false;
                 s.HasRubberBombs = false;
                 s.HasMagnetBomb = false;
+                s.HasSearchBomb = false;
                 break;
 
             case ItemType.PowerBomb:
@@ -1211,6 +1278,7 @@ public static class PlayerPersistentStats
                 s.HasControlBombs = false;
                 s.HasRubberBombs = false;
                 s.HasMagnetBomb = false;
+                s.HasSearchBomb = false;
                 break;
 
             case ItemType.RubberBomb:
@@ -1219,10 +1287,21 @@ public static class PlayerPersistentStats
                 s.HasControlBombs = false;
                 s.HasPowerBomb = false;
                 s.HasMagnetBomb = false;
+                s.HasSearchBomb = false;
                 break;
 
             case ItemType.MagnetBomb:
+                s.HasSearchBomb = false;
                 s.HasMagnetBomb = true;
+                s.HasPierceBombs = false;
+                s.HasControlBombs = false;
+                s.HasPowerBomb = false;
+                s.HasRubberBombs = false;
+                break;
+
+            case ItemType.SearchBomb:
+                s.HasSearchBomb = true;
+                s.HasMagnetBomb = false;
                 s.HasPierceBombs = false;
                 s.HasControlBombs = false;
                 s.HasPowerBomb = false;
@@ -1287,6 +1366,9 @@ public static class PlayerPersistentStats
         if (s.HasPowerGlove)
             candidates.Add(ItemType.PowerGlove);
 
+        if (s.HasLineBomb)
+            candidates.Add(ItemType.LineBomb);
+
         if (s.CanPassBombs)
             candidates.Add(ItemType.BombPass);
 
@@ -1307,6 +1389,9 @@ public static class PlayerPersistentStats
 
         if (s.HasMagnetBomb)
             candidates.Add(ItemType.MagnetBomb);
+
+        if (s.HasSearchBomb)
+            candidates.Add(ItemType.SearchBomb);
 
         if (s.HasFullFire)
             candidates.Add(ItemType.FullFire);
@@ -1344,6 +1429,10 @@ public static class PlayerPersistentStats
                 s.CanPunchBombs = false;
                 break;
 
+            case ItemType.LineBomb:
+                s.HasLineBomb = false;
+                break;
+
             case ItemType.PowerGlove:
                 s.HasPowerGlove = false;
                 break;
@@ -1374,6 +1463,10 @@ public static class PlayerPersistentStats
 
             case ItemType.MagnetBomb:
                 s.HasMagnetBomb = false;
+                break;
+
+            case ItemType.SearchBomb:
+                s.HasSearchBomb = false;
                 break;
 
             case ItemType.FullFire:
@@ -1416,6 +1509,10 @@ public static class PlayerPersistentStats
                 abilitySystem.Disable(BombPunchAbility.AbilityId);
                 RemoveBattleModeComAbility<BattleModeComPunchBombAbility>(movement.gameObject);
                 break;
+            case ItemType.LineBomb:
+                abilitySystem.Disable(LineBombAbility.AbilityId);
+                SyncBattleModeComAbilityScripts(movement.gameObject, movement.PlayerId);
+                break;
             case ItemType.PowerGlove:
                 abilitySystem.Disable(PowerGloveAbility.AbilityId);
                 RemoveBattleModeComAbility<BattleModeComPowerGloveAbility>(movement.gameObject);
@@ -1440,6 +1537,10 @@ public static class PlayerPersistentStats
                 break;
             case ItemType.MagnetBomb:
                 abilitySystem.Disable(MagnetBombAbility.AbilityId);
+                break;
+
+            case ItemType.SearchBomb:
+                abilitySystem.Disable(SearchBombAbility.AbilityId);
                 break;
             case ItemType.FullFire:
                 abilitySystem.Disable(FullFireAbility.AbilityId);

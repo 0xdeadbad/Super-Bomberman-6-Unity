@@ -8,6 +8,7 @@ using UnityEngine.Tilemaps;
 public sealed class BattleMode7PortalController : MonoBehaviour
 {
     const string BattleMode7SceneName = "BattleMode_7";
+    const string Stage34SceneName = "Stage_3-4";
     const string DefaultEnterSfxResourcesPath = "Sounds/start";
     const int BombPortalPunchDistanceTiles = 3;
 
@@ -26,6 +27,22 @@ public sealed class BattleMode7PortalController : MonoBehaviour
     [SerializeField, Min(0f)] private float retriggerGraceSeconds = 0.05f;
     [SerializeField] private bool snapToDestinationCenter = true;
 
+    [Header("Portal Sink / Rise")]
+    [Tooltip("Uses the Battle Mode 12-style animation: the rider sinks and vanishes from bottom to top before appearing at the exit.")]
+    [SerializeField] private bool usePortalSinkVisual;
+    [Tooltip("Makes entry use the inverse vertical reveal direction of the portal exit.")]
+    [SerializeField] private bool invertPortalEntryVisual;
+    [Tooltip("Uses a fixed SpriteMask like the Stage 3-3 ship blockers. Intended for Stage_3-4 portals.")]
+    [SerializeField] private bool useFixedPortalMaskVisual;
+    [SerializeField, Min(0.01f)] private float portalEntrySeconds = 0.5f;
+    [SerializeField, Min(0f)] private float portalTravelEntryOverlapSeconds;
+    [SerializeField, Min(0.01f)] private float portalTravelSeconds = 0.5f;
+    [SerializeField, Min(0.01f)] private float portalExitSeconds = 0.5f;
+    [SerializeField, Range(0f, 1f)] private float portalExitStartProgress;
+    [SerializeField, Min(0f)] private float portalExitInvulnerabilitySeconds;
+    [SerializeField, Min(0f)] private float portalMaskHorizontalPadding = 0.25f;
+    [Tooltip("Raises the fixed horizontal mask above the portal tile center. Used by Stage_3-4.")]
+    [SerializeField] private float portalMaskVerticalOffsetTiles;
     [Header("Teleport Stars")]
     [SerializeField] private bool spawnTeleportStars = true;
     [SerializeField] private Sprite[] teleportStarSprites;
@@ -42,6 +59,11 @@ public sealed class BattleMode7PortalController : MonoBehaviour
     [SerializeField] private AudioClip enterSfx;
     [SerializeField, Range(0f, 1f)] private float enterSfxVolume = 1f;
 
+    [Header("Portal Sink / Rise SFX")]
+    [SerializeField] private AudioClip portalEnterSfx;
+    [SerializeField] private AudioClip portalExitSfx;
+    [SerializeField, Range(0f, 1f)] private float portalSfxVolume = 1f;
+
     Tilemap groundTilemap;
     AudioSource audioSource;
 
@@ -50,9 +72,11 @@ public sealed class BattleMode7PortalController : MonoBehaviour
     readonly Dictionary<MovementController, Vector3Int> waitingForPortalExit = new();
     readonly Dictionary<MovementController, TeleportState> activeStates = new();
     readonly Dictionary<Bomb, Vector3Int> bombsWaitingForPortalExit = new();
+    static Sprite fixedPortalMaskSprite;
 
     sealed class TeleportState
     {
+        public Vector2 roomPresencePosition;
         public bool prevInputLocked;
         public bool prevPlayerExplosionInvulnerable;
         public bool prevMountExplosionInvulnerable;
@@ -69,6 +93,27 @@ public sealed class BattleMode7PortalController : MonoBehaviour
         public PowerGloveAbility powerGlove;
         public SpriteRenderer[] heldBombRenderers;
         public bool[] heldBombRendererStates;
+        public SpriteRenderer[] portalVisualRenderers;
+        public bool[] portalVisualRendererStates;
+    }
+
+    sealed class PortalVisualSnapshot
+    {
+        public readonly SpriteRenderer renderer;
+        public readonly Vector3 localScale;
+        public readonly Vector3 localPosition;
+        public readonly SpriteMaskInteraction maskInteraction;
+        public SpriteMask mask;
+
+        public PortalVisualSnapshot(SpriteRenderer renderer)
+        {
+            this.renderer = renderer;
+            localScale = renderer != null ? renderer.transform.localScale : Vector3.one;
+            localPosition = renderer != null ? renderer.transform.localPosition : Vector3.zero;
+            maskInteraction = renderer != null
+                ? renderer.maskInteraction
+                : SpriteMaskInteraction.None;
+        }
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -90,6 +135,8 @@ public sealed class BattleMode7PortalController : MonoBehaviour
             return;
 
         Scene activeScene = SceneManager.GetActiveScene();
+        // Battle Mode 7 is bootstrapped at runtime. Stage 3-4 is authored in
+        // its scene so it can keep its own two portal coordinates.
         if (!string.Equals(activeScene.name, BattleMode7SceneName, System.StringComparison.Ordinal))
             return;
 
@@ -102,7 +149,7 @@ public sealed class BattleMode7PortalController : MonoBehaviour
 
     void Awake()
     {
-        if (!IsBattleMode7Active())
+        if (!IsSupportedSceneActive())
         {
             Destroy(gameObject);
             return;
@@ -129,7 +176,7 @@ public sealed class BattleMode7PortalController : MonoBehaviour
     {
         using var performanceSample = BattleModePerformanceMarkers.ArenaUpdate.Auto();
 
-        if (!IsBattleMode7Active())
+        if (!IsSupportedSceneActive())
             return;
 
         ResolveReferences();
@@ -424,6 +471,15 @@ public sealed class BattleMode7PortalController : MonoBehaviour
                pinkJump.JumpActive;
     }
 
+    public static Vector2 GetRoomPresencePosition(MovementController mover)
+    {
+        foreach (var controller in FindObjectsByType<BattleMode7PortalController>())
+            if (controller.activeStates.TryGetValue(mover, out TeleportState state))
+                return state.roomPresencePosition;
+
+        return mover.transform.position;
+    }
+
     IEnumerator TeleportRoutine(MovementController mover, int sourceIndex, int destinationIndex)
     {
         if (mover == null || mover.Rigidbody == null)
@@ -447,12 +503,93 @@ public sealed class BattleMode7PortalController : MonoBehaviour
         CancelActiveMountMovementAbilities(mover);
 
         TeleportState state = CaptureAndApplyTeleportState(mover);
+        state.roomPresencePosition = source;
         activeStates[mover] = state;
+        bool teleportedToDestination = false;
 
-        PlayEnterSfx();
+        if (usePortalSinkVisual)
+            PlayPortalSfx(portalEnterSfx);
+        else
+            PlayEnterSfx();
 
         try
         {
+            if (usePortalSinkVisual)
+            {
+                float travelSeconds = Mathf.Max(0.01f, portalTravelSeconds);
+                float travelElapsed = 0f;
+                int sinkSpawnedStars = 0;
+                float travelStart = Mathf.Max(0f, portalEntrySeconds - portalTravelEntryOverlapSeconds);
+                yield return AnimatePortalSinkRise(
+                    mover,
+                    source,
+                    appearing: false,
+                    portalEntrySeconds,
+                    entryElapsed =>
+                    {
+                        if (portalTravelEntryOverlapSeconds <= 0f || entryElapsed < travelStart)
+                            return;
+
+                        travelElapsed = Mathf.Min(travelSeconds, entryElapsed - travelStart);
+                        sinkSpawnedStars = SpawnTeleportStarsAlongPath(
+                            source, destination, travelElapsed / travelSeconds, sinkSpawnedStars);
+                    });
+                if (mover == null || mover.Rigidbody == null || mover.IsEndingStage)
+                    yield break;
+
+                // Keep the mounted Louie active through the sink animation so
+                // its renderers are clipped by the same portal mask as the
+                // player. It is hidden only for the between-portals travel.
+                state.mountCompanion?.SetMountedLouieVisible(false);
+                SetRenderersEnabled(state.portalVisualRenderers, false);
+
+                // Match the Battle Mode 12 portal phase: while the rider is
+                // below the portal, stars travel from the entry to the exit.
+                if (spawnTeleportStars && teleportStarCount > 0 && sinkSpawnedStars == 0)
+                {
+                    SpawnTeleportStar(source);
+                    sinkSpawnedStars = 1;
+                }
+
+                while (travelElapsed < travelSeconds)
+                {
+                    if (mover == null || mover.Rigidbody == null || mover.IsEndingStage)
+                        yield break;
+
+                    if (GamePauseController.IsPaused)
+                    {
+                        yield return null;
+                        continue;
+                    }
+
+                    travelElapsed += Time.deltaTime;
+                    sinkSpawnedStars = SpawnTeleportStarsAlongPath(
+                        source,
+                        destination,
+                        Mathf.Clamp01(travelElapsed / travelSeconds),
+                        sinkSpawnedStars);
+                    yield return null;
+                }
+
+                SpawnTeleportStarsAlongPath(source, destination, 1f, sinkSpawnedStars);
+                mover.Rigidbody.position = destination;
+                mover.Rigidbody.linearVelocity = Vector2.zero;
+                state.mountCompanion?.SetMountedLouieVisible(true);
+                RestoreRendererStates(
+                    state.portalVisualRenderers,
+                    state.portalVisualRendererStates);
+                PlayPortalSfx(portalExitSfx);
+                yield return AnimatePortalSinkRise(
+                    mover,
+                    destination,
+                    appearing: true,
+                    portalExitSeconds,
+                    startProgress: portalExitStartProgress);
+                teleportedToDestination =
+                    mover != null && mover.Rigidbody != null && !mover.IsEndingStage;
+                yield break;
+            }
+
             float duration = Mathf.Max(0.01f, teleportSeconds);
             float elapsed = 0f;
             int spawnedStars = 0;
@@ -495,6 +632,8 @@ public sealed class BattleMode7PortalController : MonoBehaviour
 
                 if (state.eggQueue != null)
                     state.eggQueue.SnapQueueToOwnerNow(resetHistoryToOwnerNow: true);
+
+                teleportedToDestination = true;
             }
 
             SpawnTeleportStarsAlongPath(source, destination, 1f, spawnedStars);
@@ -503,6 +642,9 @@ public sealed class BattleMode7PortalController : MonoBehaviour
         {
             RestoreTeleportState(mover, state);
             activeStates.Remove(mover);
+            if (teleportedToDestination && mover != null && !mover.IsEndingStage)
+                StartPortalExitInvulnerability(state.healths);
+
             if (comPortalAbility != null)
             {
                 comPortalAbility.LogTeleportCompleted(
@@ -528,13 +670,23 @@ public sealed class BattleMode7PortalController : MonoBehaviour
         };
 
         state.powerGlove = mover.GetComponent<PowerGloveAbility>();
-        state.heldBomb = state.powerGlove != null
+        // PowerGloveAbility retains its last thrown bomb reference while it
+        // watches the landing. Only a bomb actively carried by the player may
+        // be hidden/restored as part of the player portal visual.
+        state.heldBomb = state.powerGlove != null && state.powerGlove.IsHoldingBomb
             ? state.powerGlove.HeldBombForExternalTransition
             : null;
         if (state.heldBomb != null)
         {
             state.heldBombRenderers = state.heldBomb.GetComponentsInChildren<SpriteRenderer>(true);
             state.heldBombRendererStates = CaptureRendererStates(state.heldBombRenderers);
+        }
+
+        if (usePortalSinkVisual)
+        {
+            state.portalVisualRenderers = mover.GetComponentsInChildren<SpriteRenderer>(true);
+            state.portalVisualRendererStates =
+                CaptureRendererStates(state.portalVisualRenderers);
         }
 
         state.prevColliderEnabled = state.playerCollider != null && state.playerCollider.enabled;
@@ -545,7 +697,21 @@ public sealed class BattleMode7PortalController : MonoBehaviour
         mover.SetInputLocked(true, forceIdle: false);
         mover.SetExternalMovementOverride(true);
         mover.SetVisualOverrideActive(true);
-        mover.SetAllSpritesVisible(false);
+        if (usePortalSinkVisual)
+        {
+            // Visual override deliberately hides all player sprites. Restore
+            // only the renderer that was visible on entry so the sink effect
+            // has an actual sprite to scale before star travel hides it.
+            RestorePortalVisualRenderersForSink(state);
+        }
+        // Keep the currently selected directional sprite visible for the
+        // sink/rise effect. Calling SetAllSpritesVisible(true) would enable
+        // every directional renderer at once.
+        if (!usePortalSinkVisual)
+        {
+            mover.SetAllSpritesVisible(false);
+            state.mountCompanion?.SetMountedLouieVisible(false);
+        }
         state.powerGlove?.SetTeleportVisualSuppressed(true);
         SetRenderersEnabled(state.heldBombRenderers, false);
         mover.SetExplosionInvulnerable(true);
@@ -559,15 +725,35 @@ public sealed class BattleMode7PortalController : MonoBehaviour
         if (state.mountMovement != null)
             state.mountMovement.SetExplosionInvulnerable(true);
 
-        if (state.mountCompanion != null)
-            state.mountCompanion.SetMountedLouieVisible(false);
-
         if (state.eggQueue != null)
             state.eggQueue.ForceVisible(false);
 
         SetHealthInvulnerability(state.healths, true);
 
         return state;
+    }
+
+    static void RestorePortalVisualRenderersForSink(TeleportState state)
+    {
+        if (state?.portalVisualRenderers == null ||
+            state.portalVisualRendererStates == null)
+        {
+            return;
+        }
+
+        int count = Mathf.Min(
+            state.portalVisualRenderers.Length,
+            state.portalVisualRendererStates.Length);
+        for (int i = 0; i < count; i++)
+        {
+            SpriteRenderer renderer = state.portalVisualRenderers[i];
+            if (renderer == null || !state.portalVisualRendererStates[i])
+                continue;
+
+            renderer.enabled = true;
+            if (renderer.TryGetComponent(out AnimatedSpriteRenderer animated))
+                animated.enabled = true;
+        }
     }
 
     void CancelActiveMountMovementAbilities(MovementController mover)
@@ -607,6 +793,9 @@ public sealed class BattleMode7PortalController : MonoBehaviour
                 mover.EnableExclusiveFromState();
                 mover.SetExplosionInvulnerable(state.prevPlayerExplosionInvulnerable);
                 RestoreRendererStates(state.heldBombRenderers, state.heldBombRendererStates);
+                RestoreRendererStates(
+                    state.portalVisualRenderers,
+                    state.portalVisualRendererStates);
                 state.powerGlove?.SetTeleportVisualSuppressed(false);
             }
         }
@@ -633,6 +822,222 @@ public sealed class BattleMode7PortalController : MonoBehaviour
 
         if (restoreGameplayState)
             SetHealthInvulnerability(state.healths, false);
+    }
+
+    IEnumerator AnimatePortalSinkRise(
+        MovementController mover,
+        Vector2 portalWorld,
+        bool appearing,
+        float phaseSeconds,
+        System.Action<float> onProgress = null,
+        float startProgress = 0f)
+    {
+        if (mover == null || mover.Rigidbody == null)
+            yield break;
+
+        SpriteRenderer[] renderers = mover.GetComponentsInChildren<SpriteRenderer>(true);
+        var snapshots = new List<PortalVisualSnapshot>(renderers.Length + 4);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            SpriteRenderer renderer = renderers[i];
+            if (renderer != null && renderer.enabled && renderer.sprite != null)
+                snapshots.Add(new PortalVisualSnapshot(renderer));
+        }
+
+        float duration = Mathf.Max(0.01f, phaseSeconds);
+        startProgress = Mathf.Clamp01(startProgress);
+        float maskTravelDistance = useFixedPortalMaskVisual
+            ? CreateFixedPortalMasks(snapshots, portalWorld, mover.tileSize)
+            : 0f;
+        float elapsed = 0f;
+        if (useFixedPortalMaskVisual && appearing)
+        {
+            mover.Rigidbody.position = portalWorld + Vector2.down *
+                (maskTravelDistance * (1f - startProgress));
+            mover.Rigidbody.linearVelocity = Vector2.zero;
+        }
+
+        while (elapsed < duration)
+        {
+            if (mover == null || mover.Rigidbody == null || mover.IsEndingStage)
+                yield break;
+
+            if (GamePauseController.IsPaused)
+            {
+                yield return null;
+                continue;
+            }
+
+            elapsed = Mathf.Min(duration, elapsed + Time.deltaTime);
+            onProgress?.Invoke(elapsed);
+            float t = Mathf.Lerp(startProgress, 1f, Mathf.Clamp01(elapsed / duration));
+            float visibleProgress = appearing ? t : 1f - t;
+            if (useFixedPortalMaskVisual)
+            {
+                float travelProgress = appearing ? 1f - visibleProgress : 1f - visibleProgress;
+                mover.Rigidbody.position = portalWorld + Vector2.down *
+                    (maskTravelDistance * travelProgress);
+            }
+            else
+            {
+                ApplyPortalSinkVisual(
+                    snapshots,
+                    visibleProgress,
+                    !appearing && invertPortalEntryVisual);
+                float sinkOffset = (1f - visibleProgress) * -mover.tileSize * 0.5f;
+                mover.Rigidbody.position = portalWorld + Vector2.up * sinkOffset;
+            }
+
+            mover.Rigidbody.linearVelocity = Vector2.zero;
+            yield return null;
+        }
+
+        RestorePortalSinkVisual(snapshots);
+        DestroyFixedPortalMasks(snapshots);
+        if (mover != null && mover.Rigidbody != null)
+        {
+            mover.Rigidbody.position = portalWorld;
+            mover.Rigidbody.linearVelocity = Vector2.zero;
+        }
+
+    }
+
+    static void ApplyPortalSinkVisual(
+        List<PortalVisualSnapshot> snapshots,
+        float visibleProgress,
+        bool invertVerticalDirection)
+    {
+        visibleProgress = Mathf.Clamp01(visibleProgress);
+        float direction = invertVerticalDirection ? 1f : -1f;
+        float sinkOffset = (1f - visibleProgress) * 0.25f * direction;
+        for (int i = 0; snapshots != null && i < snapshots.Count; i++)
+        {
+            PortalVisualSnapshot snapshot = snapshots[i];
+            if (snapshot.renderer == null)
+                continue;
+
+            Vector3 scale = snapshot.localScale;
+            scale.y *= visibleProgress;
+            snapshot.renderer.transform.localScale = scale;
+
+            Vector3 position = snapshot.localPosition;
+            position.y += sinkOffset;
+            snapshot.renderer.transform.localPosition = position;
+        }
+    }
+
+    float CreateFixedPortalMasks(
+        List<PortalVisualSnapshot> snapshots,
+        Vector2 portalWorld,
+        float tileSize)
+    {
+        float travelDistance = Mathf.Max(0.01f, tileSize * 0.5f);
+        if (snapshots == null || snapshots.Count == 0)
+            return travelDistance;
+
+        SpriteRenderer referenceRenderer = null;
+        float maskWidth = 0.01f;
+        float maskHeight = 0.01f;
+        int minSortingOrder = int.MaxValue;
+        int maxSortingOrder = int.MinValue;
+        for (int i = 0; i < snapshots.Count; i++)
+        {
+            PortalVisualSnapshot snapshot = snapshots[i];
+            SpriteRenderer renderer = snapshot.renderer;
+            if (renderer == null || renderer.sprite == null)
+                continue;
+
+            if (referenceRenderer == null)
+                referenceRenderer = renderer;
+
+            maskWidth = Mathf.Max(
+                maskWidth,
+                renderer.bounds.size.x + portalMaskHorizontalPadding * 2f);
+            maskHeight = Mathf.Max(maskHeight, renderer.bounds.size.y);
+            travelDistance = Mathf.Max(travelDistance, renderer.bounds.size.y);
+            minSortingOrder = Mathf.Min(minSortingOrder, renderer.sortingOrder);
+            maxSortingOrder = Mathf.Max(maxSortingOrder, renderer.sortingOrder);
+        }
+
+        if (referenceRenderer == null)
+            return travelDistance;
+
+        var maskObject = new GameObject("Stage34PortalFixedMask")
+        {
+            hideFlags = HideFlags.DontSave
+        };
+        float maskCenterY = portalWorld.y +
+            portalMaskVerticalOffsetTiles * Mathf.Max(0.0001f, tileSize);
+        Transform maskTransform = maskObject.transform;
+        maskTransform.SetPositionAndRotation(
+            new Vector3(portalWorld.x, maskCenterY, referenceRenderer.transform.position.z),
+            Quaternion.identity);
+        maskTransform.localScale = new Vector3(maskWidth, maskHeight, 1f);
+
+        SpriteMask mask = maskObject.AddComponent<SpriteMask>();
+        mask.sprite = GetFixedPortalMaskSprite();
+        mask.alphaCutoff = 0.01f;
+        mask.backSortingLayerID = referenceRenderer.sortingLayerID;
+        mask.frontSortingLayerID = referenceRenderer.sortingLayerID;
+        // The source visual may be at order 0 while the player body is at 5.
+        // Cover the full interval so the rotating body is actually masked.
+        mask.backSortingOrder = minSortingOrder;
+        mask.frontSortingOrder = maxSortingOrder;
+
+        for (int i = 0; i < snapshots.Count; i++)
+        {
+            PortalVisualSnapshot snapshot = snapshots[i];
+            SpriteRenderer renderer = snapshot.renderer;
+            if (renderer == null)
+                continue;
+
+            renderer.maskInteraction = SpriteMaskInteraction.VisibleInsideMask;
+        }
+
+        // A single shared mask avoids intersecting four identical masks when
+        // the directional player renderers rotate during the portal effect.
+        snapshots[0].mask = mask;
+        return travelDistance;
+    }
+
+    static Sprite GetFixedPortalMaskSprite()
+    {
+        if (fixedPortalMaskSprite != null)
+            return fixedPortalMaskSprite;
+
+        fixedPortalMaskSprite = Sprite.Create(
+            Texture2D.whiteTexture,
+            new Rect(0f, 0f, 1f, 1f),
+            new Vector2(0.5f, 0.5f),
+            1f);
+        fixedPortalMaskSprite.name = "Stage34PortalHorizontalMask";
+        return fixedPortalMaskSprite;
+    }
+
+    void DestroyFixedPortalMasks(List<PortalVisualSnapshot> snapshots)
+    {
+        for (int i = 0; snapshots != null && i < snapshots.Count; i++)
+        {
+            PortalVisualSnapshot snapshot = snapshots[i];
+            if (snapshot.renderer != null)
+                snapshot.renderer.maskInteraction = snapshot.maskInteraction;
+
+            if (snapshot.mask != null)
+                Destroy(snapshot.mask.gameObject);
+        }
+    }
+
+    static void RestorePortalSinkVisual(List<PortalVisualSnapshot> snapshots)
+    {
+        for (int i = 0; snapshots != null && i < snapshots.Count; i++)
+        {
+            PortalVisualSnapshot snapshot = snapshots[i];
+            if (snapshot.renderer == null)
+                continue;
+
+            snapshot.renderer.transform.localScale = snapshot.localScale;
+            snapshot.renderer.transform.localPosition = snapshot.localPosition;
+        }
     }
 
     IEnumerator ReleaseTeleporterAfterGrace(MovementController mover, Vector3Int destinationCell)
@@ -688,6 +1093,13 @@ public sealed class BattleMode7PortalController : MonoBehaviour
 
         if (enterSfx != null && audioSource != null)
             GameAudioSettings.PlaySfx(audioSource, enterSfx, enterSfxVolume);
+    }
+
+    void PlayPortalSfx(AudioClip clip)
+    {
+        EnsureAudioSource();
+        if (clip != null && audioSource != null)
+            GameAudioSettings.PlaySfx(audioSource, clip, portalSfxVolume);
     }
 
     int SpawnTeleportStarsAlongPath(Vector2 source, Vector2 destination, float normalizedTime, int alreadySpawned)
@@ -841,6 +1253,18 @@ public sealed class BattleMode7PortalController : MonoBehaviour
         }
     }
 
+    void StartPortalExitInvulnerability(CharacterHealth[] healths)
+    {
+        if (portalExitInvulnerabilitySeconds <= 0f || healths == null)
+            return;
+
+        for (int i = 0; i < healths.Length; i++)
+        {
+            if (healths[i] != null)
+                healths[i].StartTemporaryInvulnerability(portalExitInvulnerabilitySeconds);
+        }
+    }
+
     static bool[] CaptureRendererStates(SpriteRenderer[] renderers)
     {
         if (renderers == null)
@@ -889,8 +1313,12 @@ public sealed class BattleMode7PortalController : MonoBehaviour
     static float SmoothTeleportT(float t)
         => t * t * (3f - 2f * t);
 
-    static bool IsBattleMode7Active()
-        => string.Equals(SceneManager.GetActiveScene().name, BattleMode7SceneName, System.StringComparison.Ordinal);
+    static bool IsSupportedSceneActive()
+        => IsSupportedScene(SceneManager.GetActiveScene().name);
+
+    static bool IsSupportedScene(string sceneName)
+        => string.Equals(sceneName, BattleMode7SceneName, System.StringComparison.Ordinal) ||
+           string.Equals(sceneName, Stage34SceneName, System.StringComparison.Ordinal);
 
     static Tilemap FindTilemapByName(string tilemapName)
     {

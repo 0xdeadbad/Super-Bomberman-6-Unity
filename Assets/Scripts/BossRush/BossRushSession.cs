@@ -8,14 +8,15 @@ public static class BossRushSession
         "Stage_1-6",
         "Stage_1-7",
         "Stage_2-6",
-        "Stage_2-7"
+        "Stage_2-7",
+        "Stage_3-7",
+        "Stage_3-8"
     };
 
     static bool active;
     static bool timerPaused;
     static int currentStageIndex;
     static BossRushDifficulty selectedDifficulty;
-    static BossRushLoadoutPreset selectedPreset;
 
     static float elapsedSeconds;
 
@@ -28,6 +29,8 @@ public static class BossRushSession
     static readonly bool[] eliminatedPlayers = new bool[GameSession.MaxPlayerId + 1];
 
     public static bool IsActive => active;
+    public static bool IsWorld3HallEncounter => active &&
+        (GetCurrentStageSceneName() == "Stage_3-7" || GetCurrentStageSceneName() == "Stage_3-8");
     public static bool HasLastCompletedRun => hasLastCompletedRun;
     public static BossRushDifficulty CurrentDifficulty => selectedDifficulty;
     public static BossRushDifficulty LastCompletedDifficulty => lastCompletedDifficulty;
@@ -43,7 +46,6 @@ public static class BossRushSession
         active = true;
         timerPaused = false;
         selectedDifficulty = difficulty;
-        selectedPreset = preset;
         currentStageIndex = 0;
         elapsedSeconds = 0f;
 
@@ -56,7 +58,7 @@ public static class BossRushSession
             runPlayerMask = SanitizeRunPlayerMask(GameSession.Instance.ActivePlayerMask);
 
         ClearEliminatedPlayers();
-        ApplySelectedLoadoutToRunPlayers();
+        ApplyStartingLoadoutToRunPlayers(preset);
     }
 
     public static void CancelRun()
@@ -149,8 +151,11 @@ public static class BossRushSession
         if (nextIndex >= stageOrder.Length)
             return false;
 
+        // EndStage already committed health, pickups and mounts for the next encounter.
         currentStageIndex = nextIndex;
-        nextSceneName = stageOrder[currentStageIndex];
+        nextSceneName = IsWorld3HallEncounter
+            ? StageAssets.World3HallPortalSelectionController.SceneName
+            : stageOrder[currentStageIndex];
         return true;
     }
 
@@ -158,6 +163,9 @@ public static class BossRushSession
     {
         if (string.IsNullOrWhiteSpace(sceneName))
             return false;
+
+        if (sceneName == StageAssets.World3HallPortalSelectionController.SceneName)
+            return true;
 
         for (int i = 0; i < stageOrder.Length; i++)
         {
@@ -172,6 +180,13 @@ public static class BossRushSession
     {
         if (!active || string.IsNullOrWhiteSpace(sceneName))
             return;
+
+        // Both World 3 encounters share a scene; preserve the logical stage index.
+        if (IsWorld3HallEncounter && sceneName == StageAssets.World3HallPortalSelectionController.SceneName)
+        {
+            timerPaused = false;
+            return;
+        }
 
         for (int i = 0; i < stageOrder.Length; i++)
         {
@@ -289,7 +304,7 @@ public static class BossRushSession
         }
     }
 
-    static void ApplySelectedLoadoutToRunPlayers()
+    static void ApplyStartingLoadoutToRunPlayers(BossRushLoadoutPreset preset)
     {
         for (int playerId = GameSession.MinPlayerId; playerId <= GameSession.MaxPlayerId; playerId++)
         {
@@ -318,11 +333,12 @@ public static class BossRushSession
             state.HasPowerBomb = false;
             state.HasRubberBombs = false;
             state.HasMagnetBomb = false;
+            state.HasSearchBomb = false;
             state.HasFullFire = false;
             state.MountedLouie = MountedType.None;
             state.QueuedEggs.Clear();
 
-            selectedPreset?.ApplyTo(state);
+            preset?.ApplyTo(state);
 
             state.Character = preservedCharacter;
             state.Skin = preservedSkin;
@@ -415,7 +431,6 @@ public static class BossRushSession
         active = false;
         timerPaused = false;
         currentStageIndex = 0;
-        selectedPreset = null;
         elapsedSeconds = 0f;
         runPlayerMask = GameSession.CreateMaskFromCount(1);
 
@@ -458,6 +473,7 @@ public static class BossRushSession
             state.HasPowerBomb = false;
             state.HasRubberBombs = false;
             state.HasMagnetBomb = false;
+            state.HasSearchBomb = false;
             state.HasFullFire = false;
             state.MountedLouie = MountedType.None;
             state.QueuedEggs.Clear();

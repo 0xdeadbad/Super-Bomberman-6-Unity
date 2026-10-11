@@ -334,6 +334,7 @@ public class Bomb : MonoBehaviour, IMagnetPullable
 
     public void StopKickPunchMagnetRoutines()
     {
+        SuspendSearchPursuit();
         if (kickRoutine != null)
         {
             StopCoroutine(kickRoutine);
@@ -363,6 +364,7 @@ public class Bomb : MonoBehaviour, IMagnetPullable
 
     private void StopMagnetMovement()
     {
+        SuspendSearchPursuit();
         if (magnetRoutine == null)
             return;
 
@@ -1104,11 +1106,19 @@ public class Bomb : MonoBehaviour, IMagnetPullable
 
         Bounds bounds = punchRoomBounds.bounds;
         const float edgeInset = 0.001f;
+        float safeTileSize = Mathf.Max(0.0001f, kickTileSize);
+        float halfTile = safeTileSize * 0.5f;
 
         Vector3Int minCell = stageBoundsTilemap.WorldToCell(
-            new Vector3(bounds.min.x + edgeInset, bounds.min.y + edgeInset, 0f));
+            new Vector3(
+                bounds.min.x + edgeInset,
+                bounds.min.y + safeTileSize + edgeInset,
+                0f));
         Vector3Int maxCell = stageBoundsTilemap.WorldToCell(
-            new Vector3(bounds.max.x - edgeInset, bounds.max.y - edgeInset, 0f));
+            new Vector3(
+                bounds.max.x - halfTile - edgeInset,
+                bounds.max.y - halfTile - safeTileSize - edgeInset,
+                0f));
         Vector3Int rawCell = stageBoundsTilemap.WorldToCell(raw);
 
         bool wrapped = false;
@@ -1290,10 +1300,13 @@ public class Bomb : MonoBehaviour, IMagnetPullable
             $"isTrigger:{bombCollider.isTrigger} approxRadius:{ApproxRadius:F3}");
     }
 
+    public float SearchMovementSpeed => Mathf.Max(0.0001f, magnetPullSpeed);
+
     public Vector2 GetLogicalPosition() => lastPos;
 
     public void MarkMovedByKickOrPunch()
     {
+        SuspendSearchPursuit();
         WasMovedByKickOrPunch = true;
     }
 
@@ -1890,14 +1903,19 @@ public class Bomb : MonoBehaviour, IMagnetPullable
         LayerMask blockMoveMask,
         float overlapBoxSize,
         float originBlockerSize,
-        bool originBlockerUseTrigger)
+        bool originBlockerUseTrigger,
+        bool searchMovement = false)
     {
         if (IsBlockedFromMagnetMovement)
             return false;
 
-        if (magnetRoutine != null)
+        if (!searchMovement)
+            StopMagnetMovement();
+        else if (magnetRoutine != null)
+        {
             StopCoroutine(magnetRoutine);
-
+            magnetRoutine = null;
+        }
         RemoveMagnetOriginBlocker();
 
         magnetSpeedMultiplier = Mathf.Max(0.05f, speedMultiplier);
@@ -1922,7 +1940,8 @@ public class Bomb : MonoBehaviour, IMagnetPullable
         rb.position = origin;
         transform.position = origin;
 
-        TryPlayBombSfx_NoOverlap(magnetPullSfx, magnetPullSfxVolume);
+        if (!searchMovement)
+            TryPlayBombSfx_NoOverlap(magnetPullSfx, magnetPullSfxVolume);
 
         magnetRoutine = StartCoroutine(MagnetPullRoutineFixed(
             steps,
@@ -1930,7 +1949,8 @@ public class Bomb : MonoBehaviour, IMagnetPullable
             blockMoveMask,
             Mathf.Clamp(overlapBoxSize, 0.1f, 1.5f),
             Mathf.Clamp(originBlockerSize, 0.2f, 1.2f),
-            originBlockerUseTrigger));
+            originBlockerUseTrigger,
+            searchMovement));
 
         return true;
     }
@@ -1941,7 +1961,8 @@ public class Bomb : MonoBehaviour, IMagnetPullable
         LayerMask blockMoveMask,
         float overlapBoxSize,
         float originBlockerSize,
-        bool originBlockerUseTrigger)
+        bool originBlockerUseTrigger,
+        bool searchMovement)
     {
         float mult = Mathf.Max(0.05f, speedMultiplier);
         int remainingSteps = Mathf.Max(0, steps);
@@ -1954,7 +1975,12 @@ public class Bomb : MonoBehaviour, IMagnetPullable
             if (IsBlockedFromMagnetMovement)
                 break;
 
-            if (remainingSteps > 0 && remainingSteps-- == 0)
+            if (searchMovement)
+            {
+                if (remainingSteps-- <= 0)
+                    break;
+            }
+            else if (remainingSteps > 0 && remainingSteps-- == 0)
                 break;
 
             Vector2 start = currentTileCenter;
@@ -2054,6 +2080,24 @@ public class Bomb : MonoBehaviour, IMagnetPullable
         }
 
         magnetRoutine = null;
+    }
+
+    private void SuspendSearchPursuit()
+    {
+        if (TryGetComponent<SearchBomb>(out var searchBomb))
+            searchBomb.SuspendPursuit();
+    }
+
+    public bool CanSearchMoveTo(Vector2 worldCenter, float tileSize)
+    {
+        kickTileSize = tileSize;
+        kickDestructibleTilemap = owner != null ? owner.destructibleTiles : null;
+        ResolveIndestructibleTilemapIfNeeded();
+        // Bounds commonly come from the indestructible wall map. Its empty
+        // interior cells are walkable; requiring a painted wall rejects them.
+        if (stageBoundsTilemap != null && !stageBoundsTilemap.cellBounds.Contains(stageBoundsTilemap.WorldToCell(worldCenter)))
+            return false;
+        return !IsMagnetTileBlocked(worldCenter, LayerMask.GetMask("Stage", "Bomb", "Player", "Enemy", "Louie"), 0.6f);
     }
 
     private bool IsMagnetTileBlocked(Vector2 worldCenter, LayerMask mask, float boxSize)
@@ -2470,6 +2514,15 @@ public class Bomb : MonoBehaviour, IMagnetPullable
     private void DestroyPickupsAtWorld(Vector2 worldCenter)
     {
         DestroyPickupsAtWorld(worldCenter, kickDirection);
+    }
+
+    /// <summary>
+    /// Applies the moving-bomb item impact rules at the current movement position.
+    /// This is shared by kicked bombs and stage-driven movement such as conveyors.
+    /// </summary>
+    public void DestroyPickupsFromMovingBombImpact(Vector2 worldCenter, Vector2 impactDirection)
+    {
+        DestroyPickupsAtWorld(worldCenter, impactDirection);
     }
 
     private void DestroyPickupsAtWorld(Vector2 worldCenter, Vector2 impactDirection)

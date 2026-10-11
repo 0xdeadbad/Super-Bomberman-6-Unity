@@ -8,6 +8,9 @@ using UnityEngine.Tilemaps;
 [RequireComponent(typeof(AudioSource))]
 public partial class BombController : MonoBehaviour
 {
+    // Raised before explosion hitboxes are spawned so enemies can begin evasion.
+    public static event System.Action<Vector2, int> BombDetonating;
+
     private const int RevengeLaunchMinDistanceTiles = 3;
     private const int RevengeLaunchMaxDistanceTiles = 7;
     private const float RevengeLaunchMinArcHeightTiles = 2f;
@@ -29,7 +32,10 @@ public partial class BombController : MonoBehaviour
     public GameObject powerBombPrefab;
     public GameObject rubberBombPrefab;
     public GameObject magnetBombPrefab;
+    public GameObject searchBombPrefab;
     public GameObject revengeBombPrefab;
+    [Tooltip("Apply Search Bomb or Magnet Bomb to every placement instead of only the first active bomb.")]
+    [SerializeField] private bool specialBombsOnEveryPlacement;
     public float bombFuseTime = 2.3f;
     public int bombAmout = 1;
 
@@ -165,6 +171,7 @@ public partial class BombController : MonoBehaviour
     private struct ExplosionLineResult
     {
         public int Reach;
+        public int IndestructibleStopDistance;
         public List<(Vector2 position, BombExplosion.ExplosionPart part)> Explosions;
     }
 
@@ -206,6 +213,16 @@ public partial class BombController : MonoBehaviour
         _ = GetCachedComponent(ref cachedBombKickAbility);
         _ = GetCachedComponent(ref cachedYellowLouieKickAbility);
         _ = GetCachedComponent(ref cachedMagnetBombAbility);
+    }
+
+    private void ApplyBaseBombFuse(GameObject prefabToUse, GameObject bomb)
+    {
+        bool isMagnetBomb = bomb != null && bomb.TryGetComponent<MagnetBomb>(out _);
+        bool isSearchBomb = bomb != null && bomb.TryGetComponent<SearchBomb>(out _);
+        bool shouldApplyNormalFuse = prefabToUse == bombPrefab && !isMagnetBomb && !isSearchBomb;
+
+        if (shouldApplyNormalFuse)
+            BombSheetSpriteSet.ApplyNormalBombFuse(bomb.GetComponent<AnimatedSpriteRenderer>());
     }
 
     private void EnsureQueryCaches()
@@ -339,8 +356,14 @@ public partial class BombController : MonoBehaviour
             if (input == null)
                 return;
 
-            if (bombsRemaining > 0 && input.GetDown(playerId, PlayerAction.ActionA))
-                PlaceBomb();
+            if (input.GetDown(playerId, PlayerAction.ActionA))
+            {
+                // Resolve before placement: the first press must not also create a line.
+                bool handled = TryGetComponent<LineBombAbility>(out var line) &&
+                    line.TryUseOnExistingBomb();
+                if (!handled && bombsRemaining > 0)
+                    PlaceBomb();
+            }
 
             if (!greenLouieDashActive && IsControlEnabled() && input.GetDown(playerId, PlayerAction.ActionB))
                 TryExplodeOldestControlledBomb();
@@ -585,9 +608,12 @@ public partial class BombController : MonoBehaviour
     // do bloco destrutível numa célula (visual; o estado do tile vem no RPC).
     public void PlayNetworkDestructibleBreak(Vector3Int cell)
     {
-        Destructible prefab = destructiblePrefab;
-        if (prefab == null && _gm != null)
-            prefab = _gm.destructiblePrefab;
+        ResolveTilemaps();
+        GameManager manager = _gm != null ? _gm : GameManager.Instance;
+        Tilemap tiles = destructibleTiles != null ? destructibleTiles : manager != null ? manager.destructibleTilemap : null;
+        Destructible prefab = manager != null && tiles != null
+            ? manager.GetDestructiblePrefab(tiles.GetTile(cell))
+            : destructiblePrefab;
         if (prefab == null)
             return;
 
@@ -919,7 +945,9 @@ public partial class BombController : MonoBehaviour
         return destructible != null;
     }
 
-    private bool TryHandleActiveDestructibleHitByExplosion(Vector2 worldPos)
+    private bool TryHandleActiveDestructibleHitByExplosion(
+        Vector2 worldPos,
+        BombExplosion.ExplosionPart explosionPart = BombExplosion.ExplosionPart.Middle)
     {
         int mask = LayerMask.GetMask("Stage");
 
@@ -938,7 +966,13 @@ public partial class BombController : MonoBehaviour
             coreMechanisms = hit.GetComponentInParent<CoreMechanismsDestructible>();
 
         if (coreMechanisms == null)
-            return false;
+        {
+            IExplosionDestructible explosionDestructible = hit.GetComponent<IExplosionDestructible>();
+            if (explosionDestructible == null)
+                explosionDestructible = hit.GetComponentInParent<IExplosionDestructible>();
+
+            return explosionDestructible != null && explosionDestructible.TryDestroyByExplosion(explosionPart);
+        }
 
         coreMechanisms.PlayDeath();
         return true;
@@ -1034,6 +1068,17 @@ public partial class BombController : MonoBehaviour
         _netPlacementOverrideFrame = Time.frameCount;
     }
 
+    private void CaptureExplosionRadiusAtPlanting(Bomb bombComponent)
+    {
+        if (bombComponent == null)
+            return;
+
+        int skullRadiusOverride = GetSkullExplosionRadiusOverride();
+        bombComponent.ExplosionRadiusOverride = skullRadiusOverride > 0
+            ? skullRadiusOverride
+            : GetPlannedExplosionRadius();
+    }
+
     private void PlaceBomb()
     {
         if (ClownMaskBoss.BossIntroRunning)
@@ -1088,15 +1133,21 @@ public partial class BombController : MonoBehaviour
         bool controlEnabled = !canUsePowerNow && IsControlEnabled();
         bool pierceEnabled = !canUsePowerNow && !controlEnabled && IsPierceEnabled();
         bool rubberEnabled = !canUsePowerNow && !controlEnabled && !pierceEnabled && IsRubberEnabled();
-        bool shouldMakeFirstPlacedBombMagnetic = IsMagnetBombEnabled() && !HasAnyAliveBombOwnedByMe();
+        bool shouldMakeBombMagnetic = IsMagnetBombEnabled() &&
+            (specialBombsOnEveryPlacement || !HasAnyAliveBombOwnedByMe());
+        bool shouldMakeBombSearch = GetCachedComponent(ref cachedAbilitySystem) != null &&
+            cachedAbilitySystem.IsEnabled(SearchBombAbility.AbilityId) &&
+            (specialBombsOnEveryPlacement || !HasAnyAliveBombOwnedByMe());
 
         GameObject prefabToUse =
-            (shouldMakeFirstPlacedBombMagnetic && magnetBombPrefab != null) ? magnetBombPrefab :
+            (shouldMakeBombSearch ? (searchBombPrefab != null ? searchBombPrefab :
+                Resources.Load<GameObject>("Bombs/SearchBomb")) : null) ??
+            ((shouldMakeBombMagnetic && magnetBombPrefab != null) ? magnetBombPrefab :
             (canUsePowerNow && powerBombPrefab != null) ? powerBombPrefab :
             (controlEnabled && controlBombPrefab != null) ? controlBombPrefab :
             (pierceEnabled && pierceBombPrefab != null) ? pierceBombPrefab :
             (rubberEnabled && rubberBombPrefab != null) ? rubberBombPrefab :
-            bombPrefab;
+            bombPrefab);
 
         if (prefabToUse == null)
             return;
@@ -1107,6 +1158,8 @@ public partial class BombController : MonoBehaviour
         lastPlacedBomb = bomb;
         bombsRemaining--;
 
+        ApplyBaseBombFuse(prefabToUse, bomb);
+
         if (!bomb.TryGetComponent<Bomb>(out var bombComponent))
             bombComponent = bomb.AddComponent<Bomb>();
 
@@ -1114,19 +1167,22 @@ public partial class BombController : MonoBehaviour
         bombComponent.IsControlBomb = controlEnabled;
         bombComponent.IsPierceBomb = pierceEnabled;
         bombComponent.IsRubberBomb = rubberEnabled;
-
-        int skullRadiusOverride = GetSkullExplosionRadiusOverride();
-        if (skullRadiusOverride > 0)
-            bombComponent.ExplosionRadiusOverride = skullRadiusOverride;
+        CaptureExplosionRadiusAtPlanting(bombComponent);
 
         if (canUsePowerNow)
             TrackNewActivePowerBomb(bomb);
 
         bombComponent.SetStageBoundsTilemap(stageBoundsTiles);
         bombComponent.SetFuseSeconds(GetSkullModifiedBombFuseTime(bombFuseTime));
+        if (shouldMakeBombSearch)
+        {
+            bombComponent.SetFuseSeconds(GetSkullModifiedBombFuseTime(3f));
+            if (!bomb.TryGetComponent<SearchBomb>(out _))
+                bomb.AddComponent<SearchBomb>();
+        }
         bombComponent.Initialize(this);
 
-        if (shouldMakeFirstPlacedBombMagnetic)
+        if (shouldMakeBombMagnetic)
         {
             if (!bomb.TryGetComponent<MagnetBomb>(out var magnetBomb) || magnetBomb == null)
                 magnetBomb = bomb.AddComponent<MagnetBomb>();
@@ -1569,6 +1625,8 @@ public partial class BombController : MonoBehaviour
 
         TryApplyGroundExplosionModifiers(snapped, ref effectiveRadius, ref pierce);
 
+        BombDetonating?.Invoke(snapped, effectiveRadius);
+
         HideBombVisuals(bomb);
 
         if (bomb.TryGetComponent<AudioSource>(out var explosionAudio))
@@ -1609,6 +1667,7 @@ public partial class BombController : MonoBehaviour
             Vector2.zero,
             snapped,
             bombComp);
+        TryHandleActiveDestructibleHitByExplosion(snapped, BombExplosion.ExplosionPart.Start);
 
         ExplosionLineResult up = ExplodeAndCollect(snapped, Vector2.up, effectiveRadius, pierce, bombComp);
         ExplosionLineResult down = ExplodeAndCollect(snapped, Vector2.down, effectiveRadius, pierce, bombComp);
@@ -1618,10 +1677,10 @@ public partial class BombController : MonoBehaviour
         RegisterBlackoutSpotlightsForExplosion(
             bombSpotlightId,
             snapped,
-            up.Reach,
-            down.Reach,
-            left.Reach,
-            right.Reach);
+            up,
+            down,
+            left,
+            right);
 
         float spotlightDuration = Mathf.Max(0.01f, explosionDuration);
         StartSafeCoroutine(AnimateBlackoutSpotlights(bombSpotlightId, spotlightDuration));
@@ -1780,6 +1839,7 @@ public partial class BombController : MonoBehaviour
                     continue;
                 }
 
+                result.IndestructibleStopDistance = i + 1;
                 break;
             }
 
@@ -2178,6 +2238,32 @@ public partial class BombController : MonoBehaviour
         return handler.HandleHit(this, worldPos, cell);
     }
 
+    /// <summary>
+    /// Applies the normal destructible-tile destruction flow without spawning
+    /// an explosion visual, hitbox, or explosion sound.
+    /// </summary>
+    public bool TriggerDestructibleTileEffectWithoutExplosion(Vector2 worldPos)
+    {
+        Tilemap snapTm = GetSnapTilemapForGround();
+        Vector2 position = SnapToTileCenter(snapTm, worldPos, out _, out _);
+
+        if (TryGetDestructibleTileAt(position, out var cell, out var tile))
+        {
+            if (!TryHandleDestructibleTileEffect(position, cell, tile))
+                ClearDestructibleForEffect(position);
+
+            return true;
+        }
+
+        if (HasDestroyingDestructibleAt(position))
+        {
+            TryHandleActiveDestructibleHitByExplosion(position);
+            return true;
+        }
+
+        return false;
+    }
+
     public void ClearDestructibleForEffect(
         Vector2 position,
         bool spawnDestructiblePrefab = true,
@@ -2197,13 +2283,16 @@ public partial class BombController : MonoBehaviour
 
         Transform parent = destructibleTiles != null ? destructibleTiles.transform : null;
         Vector3 spawnWorldPosition = destructibleTiles.GetCellCenterWorld(cell);
+        Destructible destructionPrefab = _gm != null
+            ? _gm.GetDestructiblePrefab(tile)
+            : destructiblePrefab;
 
-        if (spawnDestructiblePrefab && destructiblePrefab != null)
+        if (spawnDestructiblePrefab && destructionPrefab != null)
         {
             if (parent != null)
-                Instantiate(destructiblePrefab, spawnWorldPosition, Quaternion.identity, parent);
+                Instantiate(destructionPrefab, spawnWorldPosition, Quaternion.identity, parent);
             else
-                Instantiate(destructiblePrefab, spawnWorldPosition, Quaternion.identity);
+                Instantiate(destructionPrefab, spawnWorldPosition, Quaternion.identity);
         }
 
         if (spawnHiddenObject && _gm != null)
@@ -2211,7 +2300,7 @@ public partial class BombController : MonoBehaviour
             GameObject spawnPrefab = _gm.GetSpawnForDestroyedBlock(cell);
             if (spawnPrefab != null)
             {
-                float delay = GetDestructibleDestroyTime();
+                float delay = GetDestructibleDestroyTime(destructionPrefab);
                 StartSafeCoroutine(SpawnHiddenObjectAfterDelay(spawnPrefab, cell, parent, delay));
             }
         }
@@ -2266,10 +2355,10 @@ public partial class BombController : MonoBehaviour
         Assets.Scripts.Netcode.NetSpawn.Server(spawned);
     }
 
-    private float GetDestructibleDestroyTime()
+    private float GetDestructibleDestroyTime(Destructible destructionPrefab)
     {
-        if (destructiblePrefab != null)
-            return Mathf.Max(0f, destructiblePrefab.destructionTime);
+        if (destructionPrefab != null)
+            return Mathf.Max(0f, destructionPrefab.destructionTime);
 
         return 0.5f;
     }
@@ -3057,6 +3146,8 @@ public partial class BombController : MonoBehaviour
         if (bomb == null)
             return false;
 
+        ApplyBaseBombFuse(prefabToUse, bomb);
+
         lastPlacedBomb = bomb;
 
         if (!bomb.TryGetComponent<Bomb>(out var bombComponent))
@@ -3120,9 +3211,17 @@ public partial class BombController : MonoBehaviour
         return true;
     }
 
-    public bool TryPlaceBombAtIgnoringInputLock(Vector2 worldPos, out GameObject placedBomb, bool consumeBomb = true, bool playSfx = true)
+    public bool TryPlaceBombAtIgnoringInputLock(
+        Vector2 worldPos,
+        out GameObject placedBomb,
+        bool consumeBomb = true,
+        bool playSfx = true,
+        bool trackOwnerBombTraversal = true)
     {
         placedBomb = null;
+
+        if (!Assets.Scripts.Netcode.NetSync.ShouldSimulateLocally)
+            return false;
 
         if (ClownMaskBoss.BossIntroRunning)
             return false;
@@ -3170,15 +3269,21 @@ public partial class BombController : MonoBehaviour
         bool controlEnabled = !canUsePowerNow && IsControlEnabled();
         bool pierceEnabled = !canUsePowerNow && !controlEnabled && IsPierceEnabled();
         bool rubberEnabled = !canUsePowerNow && !controlEnabled && !pierceEnabled && IsRubberEnabled();
-        bool shouldMakeFirstPlacedBombMagnetic = IsMagnetBombEnabled() && !HasAnyAliveBombOwnedByMe();
+        bool shouldMakeBombMagnetic = IsMagnetBombEnabled() &&
+            (specialBombsOnEveryPlacement || !HasAnyAliveBombOwnedByMe());
+        bool shouldMakeBombSearch = GetCachedComponent(ref cachedAbilitySystem) != null &&
+            cachedAbilitySystem.IsEnabled(SearchBombAbility.AbilityId) &&
+            (specialBombsOnEveryPlacement || !HasAnyAliveBombOwnedByMe());
 
         GameObject prefabToUse =
-            (shouldMakeFirstPlacedBombMagnetic && magnetBombPrefab != null) ? magnetBombPrefab :
+            (shouldMakeBombSearch ? (searchBombPrefab != null ? searchBombPrefab :
+                Resources.Load<GameObject>("Bombs/SearchBomb")) : null) ??
+            ((shouldMakeBombMagnetic && magnetBombPrefab != null) ? magnetBombPrefab :
             (canUsePowerNow && powerBombPrefab != null) ? powerBombPrefab :
             (controlEnabled && controlBombPrefab != null) ? controlBombPrefab :
             (pierceEnabled && pierceBombPrefab != null) ? pierceBombPrefab :
             (rubberEnabled && rubberBombPrefab != null) ? rubberBombPrefab :
-            bombPrefab;
+            bombPrefab);
 
         if (prefabToUse == null)
             return false;
@@ -3190,6 +3295,8 @@ public partial class BombController : MonoBehaviour
         placedBomb = bomb;
         lastPlacedBomb = bomb;
 
+        ApplyBaseBombFuse(prefabToUse, bomb);
+
         if (consumeBomb)
             bombsRemaining--;
 
@@ -3200,15 +3307,22 @@ public partial class BombController : MonoBehaviour
         bombComponent.IsControlBomb = controlEnabled;
         bombComponent.IsPierceBomb = pierceEnabled;
         bombComponent.IsRubberBomb = rubberEnabled;
+        CaptureExplosionRadiusAtPlanting(bombComponent);
 
         if (canUsePowerNow)
             TrackNewActivePowerBomb(bomb);
 
         bombComponent.SetStageBoundsTilemap(stageBoundsTiles);
         bombComponent.SetFuseSeconds(bombFuseTime);
+        if (shouldMakeBombSearch)
+        {
+            bombComponent.SetFuseSeconds(GetSkullModifiedBombFuseTime(3f));
+            if (!bomb.TryGetComponent<SearchBomb>(out _))
+                bomb.AddComponent<SearchBomb>();
+        }
         bombComponent.Initialize(this);
 
-        if (shouldMakeFirstPlacedBombMagnetic)
+        if (shouldMakeBombMagnetic)
         {
             var magnetAbility = GetCachedComponent(ref cachedMagnetBombAbility);
             if (magnetAbility != null)
@@ -3247,6 +3361,8 @@ public partial class BombController : MonoBehaviour
         if (controlEnabled)
             RegisterBomb(bomb);
 
+        Assets.Scripts.Netcode.NetSpawn.Server(bomb);
+
         if (explosionAlreadyHere)
         {
             ExplodeBomb(bomb);
@@ -3257,7 +3373,8 @@ public partial class BombController : MonoBehaviour
             bombComponent.BeginFuse();
 
         Vector2 plantDir = GetBombPlantDirection(movement);
-        movement?.NotifyBombPlanted(bombComponent, plantDir);
+        if (trackOwnerBombTraversal)
+            movement?.NotifyBombPlanted(bombComponent, plantDir);
 
         var kickAbility = GetCachedComponent(ref cachedBombKickAbility);
         if (kickAbility != null)
@@ -3495,13 +3612,18 @@ public partial class BombController : MonoBehaviour
     private void RegisterBlackoutSpotlightsForExplosion(
         int baseSpotlightId,
         Vector2 center,
-        int upReach,
-        int downReach,
-        int leftReach,
-        int rightReach)
+        ExplosionLineResult up,
+        ExplosionLineResult down,
+        ExplosionLineResult left,
+        ExplosionLineResult right)
     {
         if (StageBlackout.Instance == null)
             return;
+
+        float upReach = StageBlackout.Instance.GetExplosionLightReach(up.Reach, up.IndestructibleStopDistance);
+        float downReach = StageBlackout.Instance.GetExplosionLightReach(down.Reach, down.IndestructibleStopDistance);
+        float leftReach = StageBlackout.Instance.GetExplosionLightReach(left.Reach, left.IndestructibleStopDistance);
+        float rightReach = StageBlackout.Instance.GetExplosionLightReach(right.Reach, right.IndestructibleStopDistance);
 
         int centerId = GetSpotlightSubId(baseSpotlightId, 0);
         StageBlackout.Instance.RegisterExplosionSpotlight(centerId, center, new Vector2(0.5f, 0.5f));

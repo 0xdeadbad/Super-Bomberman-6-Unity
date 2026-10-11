@@ -1,4 +1,4 @@
-﻿public enum ItemType
+public enum ItemType
 {
     ExtraBomb = 0,
     BlastRadius = 1,
@@ -26,5 +26,7 @@
     RubberBomb = 23,
     MagnetBomb = 24,
     Skull = 25,
-    OneUp = 26
+    OneUp = 26,
+    LineBomb = 27,
+    SearchBomb = 28
 }

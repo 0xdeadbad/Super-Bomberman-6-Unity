@@ -82,7 +82,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 5
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 6797611592296160210, guid: 9d0029269009e134ab03d358fe79f9f0, type: 3}
+  m_Sprite: {fileID: 21300001, guid: b9d88f99398541a68700b7c18119d791, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -105,21 +105,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a4b55e1b961d144197e1a7a4a391956, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  idleSprite: {fileID: 6797611592296160210, guid: 9d0029269009e134ab03d358fe79f9f0, type: 3}
+  idleSprite: {fileID: 21300001, guid: b9d88f99398541a68700b7c18119d791, type: 3}
   animationSprite:
-  - {fileID: 6797611592296160210, guid: 9d0029269009e134ab03d358fe79f9f0, type: 3}
-  - {fileID: 1994002947523506397, guid: 9d0029269009e134ab03d358fe79f9f0, type: 3}
-  - {fileID: 7821248823398095707, guid: 9d0029269009e134ab03d358fe79f9f0, type: 3}
-  - {fileID: -160263632419133399, guid: 9d0029269009e134ab03d358fe79f9f0, type: 3}
+  - {fileID: 21300001, guid: b9d88f99398541a68700b7c18119d791, type: 3}
+  - {fileID: 21300002, guid: b9d88f99398541a68700b7c18119d791, type: 3}
+  - {fileID: 21300003, guid: b9d88f99398541a68700b7c18119d791, type: 3}
+  - {fileID: 21300004, guid: b9d88f99398541a68700b7c18119d791, type: 3}
+  - {fileID: 21300005, guid: b9d88f99398541a68700b7c18119d791, type: 3}
+  - {fileID: 21300006, guid: b9d88f99398541a68700b7c18119d791, type: 3}
   allowFlipX: 0
-  animationTime: 0.125
-  useSequenceDuration: 0
+  animationTime: 0.083333336
+  useSequenceDuration: 1
   sequenceDuration: 0.5
   frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 0
   loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 0
   frameOffsets: []
   pingPong: 0
@@ -212,7 +215,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 2
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 4646649027328027380, guid: 84fc19425a2586b49b58239f93eda2c5, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -257,11 +260,11 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: -0.25}
+  m_Offset: {x: 0, y: 0}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
-    pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 1, y: 1.8125}
+    pivot: {x: 0.5, y: 0.25}
+    oldSize: {x: 1.125, y: 1.5}
     newSize: {x: 1, y: 1}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
@@ -281,61 +284,48 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a4b55e1b961d144197e1a7a4a391956, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  idleSprite: {fileID: 4646649027328027380, guid: 84fc19425a2586b49b58239f93eda2c5, type: 3}
+  idleSprite: {fileID: 21300000, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
   animationSprite:
-  - {fileID: 4646649027328027380, guid: 84fc19425a2586b49b58239f93eda2c5, type: 3}
-  - {fileID: -3665803642334570777, guid: 84fc19425a2586b49b58239f93eda2c5, type: 3}
-  - {fileID: -7578226498497253333, guid: 84fc19425a2586b49b58239f93eda2c5, type: 3}
-  - {fileID: -3665803642334570777, guid: 84fc19425a2586b49b58239f93eda2c5, type: 3}
-  - {fileID: 4646649027328027380, guid: 84fc19425a2586b49b58239f93eda2c5, type: 3}
-  - {fileID: -3665803642334570777, guid: 84fc19425a2586b49b58239f93eda2c5, type: 3}
-  - {fileID: -7578226498497253333, guid: 84fc19425a2586b49b58239f93eda2c5, type: 3}
-  - {fileID: -3665803642334570777, guid: 84fc19425a2586b49b58239f93eda2c5, type: 3}
-  - {fileID: 4646649027328027380, guid: 84fc19425a2586b49b58239f93eda2c5, type: 3}
-  - {fileID: -3665803642334570777, guid: 84fc19425a2586b49b58239f93eda2c5, type: 3}
-  - {fileID: -2044270837, guid: 84fc19425a2586b49b58239f93eda2c5, type: 3}
-  - {fileID: -1819392519, guid: 84fc19425a2586b49b58239f93eda2c5, type: 3}
-  - {fileID: -2044270837, guid: 84fc19425a2586b49b58239f93eda2c5, type: 3}
-  - {fileID: 21300000, guid: 976c29a8bc011654b970a1586c3c4992, type: 3}
-  - {fileID: -241054419, guid: 84fc19425a2586b49b58239f93eda2c5, type: 3}
-  - {fileID: -1131300255, guid: 84fc19425a2586b49b58239f93eda2c5, type: 3}
-  - {fileID: 1843361705, guid: 84fc19425a2586b49b58239f93eda2c5, type: 3}
-  - {fileID: -1131300255, guid: 84fc19425a2586b49b58239f93eda2c5, type: 3}
-  - {fileID: -241054419, guid: 84fc19425a2586b49b58239f93eda2c5, type: 3}
-  - {fileID: -1131300255, guid: 84fc19425a2586b49b58239f93eda2c5, type: 3}
-  - {fileID: 1843361705, guid: 84fc19425a2586b49b58239f93eda2c5, type: 3}
+  - {fileID: 21300000, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
+  - {fileID: 21300001, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
+  - {fileID: 21300002, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
+  - {fileID: 21300003, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
+  - {fileID: 21300000, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
+  - {fileID: 21300001, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
+  - {fileID: 21300002, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
+  - {fileID: 21300003, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
+  - {fileID: 21300007, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
+  - {fileID: 21300004, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
+  - {fileID: 21300005, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
+  - {fileID: 21300006, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
+  - {fileID: 21300007, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
+  - {fileID: 21300001, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
   allowFlipX: 0
-  animationTime: 0.0952381
+  animationTime: 0.13333334
   useSequenceDuration: 0
   sequenceDuration: 0.5
-  frameDurations: []
+  frameDurations:
+  - 0.13333334
+  - 0.13333334
+  - 0.13333334
+  - 0.13333334
+  - 0.13333334
+  - 0.13333334
+  - 0.13333334
+  - 0.13333334
+  - 0.13333334
+  - 0.13333334
+  - 0.13333334
+  - 0.13333334
+  - 0.13333334
+  - 0.13333334
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 1
   loopStartFrame: 0
+  loopRestartDelay: 0.5
   idle: 0
-  frameOffsets:
-  - {x: 0, y: 0.3}
-  - {x: 0, y: 0.3}
-  - {x: 0, y: 0.3}
-  - {x: 0, y: 0.3}
-  - {x: 0, y: 0.3}
-  - {x: 0, y: 0.3}
-  - {x: 0, y: 0.3}
-  - {x: 0, y: 0.3}
-  - {x: 0, y: 0.3}
-  - {x: 0, y: 0.3}
-  - {x: 0, y: 0.3}
-  - {x: 0, y: 0.3}
-  - {x: 0, y: 0.3}
-  - {x: 0, y: 0.3}
-  - {x: 0, y: 0.3}
-  - {x: 0, y: 0.3}
-  - {x: 0, y: 0.3}
-  - {x: 0, y: 0.3}
-  - {x: 0, y: 0.3}
-  - {x: 0, y: 0.3}
-  - {x: 0, y: 0.3}
+  frameOffsets: []
   pingPong: 0
   disableOffsetsIfThisObjectHasRigidbody2D: 1
   disableOffsetsIfStandaloneRoot: 1
@@ -365,23 +355,6 @@ MonoBehaviour:
   behavior: {fileID: 0}
   type: 14
   debugSkullBounce: 0
---- !u!114 &4563594598111071271
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2727780941473249226}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
-  sceneId: 0
-  _assetId: 0
-  serverOnly: 0
-  visibility: 0
-  hasSpawned: 0
 --- !u!1 &7166859128449797899
 GameObject:
   m_ObjectHideFlags: 0
@@ -409,7 +382,7 @@ Transform:
   m_GameObject: {fileID: 7166859128449797899}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.09, y: -0.21000004, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -464,7 +437,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 5
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -6061607482223975080, guid: 46009776c86056b40875a005c5e110e8, type: 3}
+  m_Sprite: {fileID: 21300020, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -487,23 +460,45 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a4b55e1b961d144197e1a7a4a391956, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  idleSprite: {fileID: -6061607482223975080, guid: 46009776c86056b40875a005c5e110e8, type: 3}
+  idleSprite: {fileID: 21300020, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
   animationSprite:
-  - {fileID: -6061607482223975080, guid: 46009776c86056b40875a005c5e110e8, type: 3}
-  - {fileID: -672159567179257124, guid: 46009776c86056b40875a005c5e110e8, type: 3}
-  - {fileID: 6641019540080088224, guid: 46009776c86056b40875a005c5e110e8, type: 3}
-  - {fileID: -1309376365, guid: 46009776c86056b40875a005c5e110e8, type: 3}
+  - {fileID: 21300020, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
+  - {fileID: 21300021, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
+  - {fileID: 21300022, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
+  - {fileID: 21300023, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
+  - {fileID: 21300024, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
+  - {fileID: 21300025, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
+  - {fileID: 21300026, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
+  - {fileID: 21300027, guid: 419d0aadeb4e45969e2c01934626aaf3, type: 3}
   allowFlipX: 0
-  animationTime: 0.125
-  useSequenceDuration: 0
+  animationTime: 0.0625
+  useSequenceDuration: 1
   sequenceDuration: 0.5
   frameDurations: []
   useUnscaledTime: 1
   respectGamePause: 1
   loop: 0
   loopStartFrame: 0
+  loopRestartDelay: 0
   idle: 0
   frameOffsets: []
   pingPong: 0
   disableOffsetsIfThisObjectHasRigidbody2D: 1
   disableOffsetsIfStandaloneRoot: 1
+--- !u!114 &4563594598111071271
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2727780941473249226}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 0
+  _assetId: 0
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0

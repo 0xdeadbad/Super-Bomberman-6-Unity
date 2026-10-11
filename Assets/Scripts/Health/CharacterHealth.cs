@@ -4,7 +4,6 @@ using System.Linq;
 using UnityEngine;
 
 [RequireComponent(typeof(Collider2D))]
-[RequireComponent(typeof(IKillable))]
 public class CharacterHealth : MonoBehaviour
 {
     [Header("Health")]
@@ -42,6 +41,7 @@ public class CharacterHealth : MonoBehaviour
     IKillable killable;
 
     public bool IsInvulnerable => isInvulnerable;
+    public bool IsDead => isDead;
     private bool externalInvulnerability;
 
     private int _blinkOverrideToken;
@@ -59,6 +59,13 @@ public class CharacterHealth : MonoBehaviour
     {
         killable = GetComponent<IKillable>();
         defaultHitBlinkInterval = hitBlinkInterval;
+        EnsureRendererCache();
+    }
+
+    void EnsureRendererCache()
+    {
+        if (spriteRenderers != null)
+            return;
 
         spriteRenderers = GetComponentsInChildren<SpriteRenderer>(true);
         originalColors = new Color[spriteRenderers.Length];
@@ -440,6 +447,8 @@ public class CharacterHealth : MonoBehaviour
 
     public void SetExternalInvulnerability(bool value)
     {
+        // Other components may request protection before this component's Awake.
+        EnsureRendererCache();
         externalInvulnerability = value;
 
         if (externalInvulnerability)

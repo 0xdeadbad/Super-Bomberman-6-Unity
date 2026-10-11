@@ -5,6 +5,7 @@ using System.Collections.Generic;
 [Serializable]
 public sealed class SaveData
 {
+    public SavedTouchControls touchControls = new();
     public int activeSlotIndex = -1;
     public int language = (int)GameLanguage.English;
 
@@ -111,6 +112,7 @@ public sealed class SaveData
         public int bombType = (int)BattleModeHandicapBombType.Default;
         public bool punchBomb;
         public bool powerGlove;
+        public bool lineBomb;
         public int movementAbility = (int)BattleModeHandicapMovementAbility.None;
         public bool fullFire;
         public bool destructiblePass;
@@ -124,7 +126,8 @@ public enum BattleModeHandicapBombType
     Rubber = 2,
     Pierce = 3,
     Control = 4,
-    Magnet = 5
+    Magnet = 5,
+    Search = 6
 }
 
 public enum BattleModeHandicapMovementAbility

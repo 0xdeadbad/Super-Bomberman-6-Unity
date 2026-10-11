@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ef6a30f7c11448e95bbd918acdd02c1, type: 3}
+  m_Name: MusicLoudnessCalibration
+  m_EditorClassIdentifier: Assembly-CSharp::MusicLoudnessCalibration
+  battleModeClipVolumes:
+  - clipName: SB1 - Battle
+    volume: 0.9136835
+  - clipName: SB2 - Battle3
+    volume: 1
+  - clipName: SB2 - Battle3 Loop
+    volume: 1
+  - clipName: SB3 - Battle
+    volume: 0.39112392
+  - clipName: SB3 - Battle Loop
+    volume: 0.37415826
+  - clipName: SB4 - Battle
+    volume: 0.74797726
+  - clipName: SB4 - Battle Loop
+    volume: 0.7409125
+  - clipName: SB5 - Battle1
+    volume: 0.6679299
+  - clipName: SB5 - Battle1 Critical
+    volume: 0.60550284
+  - clipName: SB5 - Battle1 Loop
+    volume: 0.6363903
+  - clipName: SB5 - Battle2
+    volume: 0.7556447
+  - clipName: SB5 - Battle2 Critical
+    volume: 0.7560379
+  - clipName: Sb2 - Battle1
+    volume: 1
+  - clipName: Sb2 - Battle2
+    volume: 1
+  - clipName: Sb2 - Battle2 Loop
+    volume: 1

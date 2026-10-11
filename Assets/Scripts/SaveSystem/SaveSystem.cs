@@ -28,7 +28,8 @@ public static class SaveSystem
         PlayerAction.ActionB,
         PlayerAction.ActionC,
         PlayerAction.ActionL,
-        PlayerAction.ActionR
+        PlayerAction.ActionR,
+        PlayerAction.Select
     };
 
     public static SaveData Data
@@ -778,6 +779,20 @@ public static class SaveSystem
         Save();
     }
 
+    public static SavedTouchControls GetTouchControls()
+    {
+        EnsureLoaded();
+        data.touchControls ??= new SavedTouchControls();
+        return data.touchControls;
+    }
+
+    public static void SaveTouchControls()
+    {
+        GetTouchControls().Normalize();
+        Save();
+        MobileControlsRoot.Instance?.RefreshVisibilityFromSavedPreference();
+    }
+
     public static bool GetMobileTouchButtonsVisible()
     {
         EnsureLoaded();
@@ -883,6 +898,9 @@ public static class SaveSystem
 
         if (d.unlockedSkins == null)
             d.unlockedSkins = new List<string>();
+
+        d.touchControls ??= new SavedTouchControls();
+        d.touchControls.Normalize();
 
         bool migrateLegacySkinIds = HasLegacySkinNames(d.unlockedSkins);
         MigrateLegacySkinNames(d.unlockedSkins);
@@ -1621,7 +1639,8 @@ public static class SaveSystem
                 player.speedLevel = sourcePlayer.speedLevel;
                 player.bombType = sourcePlayer.bombType;
                 player.punchBomb = sourcePlayer.punchBomb;
-                player.powerGlove = sourcePlayer.powerGlove;
+                player.lineBomb = sourcePlayer.lineBomb;
+                player.powerGlove = sourcePlayer.powerGlove && !player.lineBomb;
                 player.movementAbility = sourcePlayer.movementAbility;
                 player.fullFire = sourcePlayer.fullFire;
                 player.destructiblePass = sourcePlayer.destructiblePass;
@@ -1670,6 +1689,7 @@ public static class SaveSystem
                 player.bombType != (int)BattleModeHandicapBombType.Default ||
                 player.punchBomb ||
                 player.powerGlove ||
+                player.lineBomb ||
                 (player.movementAbility != (int)BattleModeHandicapMovementAbility.None &&
                  player.movementAbility != (int)BattleModeHandicapMovementAbility.Kick) ||
                 player.fullFire ||
@@ -1706,6 +1726,7 @@ public static class SaveSystem
                 player.bombType != (int)BattleModeHandicapBombType.Default ||
                 player.punchBomb ||
                 player.powerGlove ||
+                player.lineBomb ||
                 !defaultMovement ||
                 player.fullFire ||
                 player.destructiblePass)
@@ -1729,6 +1750,7 @@ public static class SaveSystem
         player.bombType = (int)BattleModeHandicapBombType.Default;
         player.punchBomb = true;
         player.powerGlove = true;
+        player.lineBomb = false;
         player.movementAbility = (int)BattleModeHandicapMovementAbility.Kick;
         player.fullFire = false;
         player.destructiblePass = false;

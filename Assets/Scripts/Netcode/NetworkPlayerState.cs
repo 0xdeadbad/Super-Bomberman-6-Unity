@@ -87,6 +87,9 @@ namespace Assets.Scripts.Netcode
             SetAbility(MagnetBombAbility.AbilityId,      (abilityFlags & (1 << 9)) != 0);
             SetAbility(FullFireAbility.AbilityId,        (abilityFlags & (1 << 10)) != 0);
 
+            SetAbility(LineBombAbility.AbilityId, (abilityFlags & (1 << 11)) != 0);
+            SetAbility(SearchBombAbility.AbilityId, (abilityFlags & (1 << 12)) != 0);
+
             appliedAbilityFlags = abilityFlags;
         }
 
@@ -207,6 +210,8 @@ namespace Assets.Scripts.Netcode
                 if (rt.HasRubberBombs)      flags |= 1 << 8;
                 if (rt.HasMagnetBomb)       flags |= 1 << 9;
                 if (rt.HasFullFire)         flags |= 1 << 10;
+                if (rt.HasLineBomb)         flags |= 1 << 11;
+                if (rt.HasSearchBomb)       flags |= 1 << 12;
             }
             if (flags != abilityFlags) abilityFlags = flags;
 
@@ -284,6 +289,8 @@ namespace Assets.Scripts.Netcode
                 rt.HasRubberBombs      = (abilityFlags & (1 << 8)) != 0;
                 rt.HasMagnetBomb       = (abilityFlags & (1 << 9)) != 0;
                 rt.HasFullFire         = (abilityFlags & (1 << 10)) != 0;
+                rt.HasLineBomb         = (abilityFlags & (1 << 11)) != 0;
+                rt.HasSearchBomb       = (abilityFlags & (1 << 12)) != 0;
             }
 
             // Client-auth: além do dado no rt (HUD), liga as abilities de verdade

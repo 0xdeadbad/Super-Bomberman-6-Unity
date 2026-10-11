@@ -523,7 +523,7 @@ public class ItemPickup : MonoBehaviour
                 break;
 
             case ItemType.Clock:
-                ClockStageStunEffect.Trigger(5f);
+                ClockStageStunEffect.Trigger(5f, player.transform.position);
                 break;
 
             case ItemType.LandMine:
@@ -561,6 +561,12 @@ public class ItemPickup : MonoBehaviour
 
             case ItemType.PowerGlove:
                 GetOrCreateAbilitySystem(player).Enable(PowerGloveAbility.AbilityId);
+                PlayerPersistentStats.SyncBattleModeComAbilityScripts(player, pid);
+                break;
+
+            case ItemType.LineBomb:
+                GetOrCreateAbilitySystem(player).Enable(LineBombAbility.AbilityId);
+                PlayerPersistentStats.SyncBattleModeComAbilityScripts(player, pid);
                 break;
 
             case ItemType.PierceBomb:
@@ -611,6 +617,18 @@ public class ItemPickup : MonoBehaviour
                 {
                     var ab = GetOrCreateAbilitySystem(player);
                     ab.Enable(MagnetBombAbility.AbilityId);
+                    ab.Disable(PierceBombAbility.AbilityId);
+                    ab.Disable(ControlBombAbility.AbilityId);
+                    ab.Disable(PowerBombAbility.AbilityId);
+                    ab.Disable(RubberBombAbility.AbilityId);
+                    break;
+                }
+
+            case ItemType.SearchBomb:
+                {
+                    var ab = GetOrCreateAbilitySystem(player);
+                    ab.Enable(SearchBombAbility.AbilityId);
+                    ab.Disable(MagnetBombAbility.AbilityId);
                     ab.Disable(PierceBombAbility.AbilityId);
                     ab.Disable(ControlBombAbility.AbilityId);
                     ab.Disable(PowerBombAbility.AbilityId);
@@ -1637,9 +1655,9 @@ public class ItemPickup : MonoBehaviour
         transform.position = p;
 
         // IMPORTANTE:
-        // O AnimatedSpriteRenderer est� no mesmo GameObject do item.
+        // O AnimatedSpriteRenderer está no mesmo GameObject do item.
         // Se ele usar frameOffsets, ele pode restaurar o localPosition antigo.
-        // Ent�o atualizamos a base visual para a posi��o local atual.
+        // Então atualizamos a base visual para a posição local atual.
         SyncSkullAnimatedRendererBasePosition();
 
         if (syncPhysics)

@@ -168,8 +168,13 @@ This file gives repository-specific guidance for AI coding agents working on
 
 ## Validation expectations
 
-- Do not trigger Unity builds or script compilation after code edits unless the
-  user explicitly asks for it.
+- Always fix warnings introduced by your implementation before finalizing the
+  task. Correct their cause instead of suppressing them, and review changed
+  code for potential warnings even when compilation is not requested.
+- Before finalizing any C# or Unity-content change, run the available C# and
+  Unity compilation checks, resolve every error introduced by the change, and
+  report any check that cannot run (for example, because the project is open
+  in another Unity instance).
 - Prefer targeted manual validation in the touched scene or mode.
 - For shared gameplay changes, validate both single-player and multiplayer
   behavior when practical.
@@ -182,9 +187,35 @@ This file gives repository-specific guidance for AI coding agents working on
 
 ## Safe defaults for agents
 
+- When editing text files, always specify UTF-8 explicitly for both reads and
+  writes; never rely on the shell or Python locale default. In Python, read
+  with `encoding="utf-8-sig"` and write with `encoding="utf-8"`; preserve the
+  existing newline style. A valid UTF-8 BOM is allowed, but must never be
+  decoded as ANSI/Windows-1252 and written back as literal text.
+- Before finalizing C# edits, inspect the first bytes of every changed `.cs`
+  file and verify strict UTF-8 decoding. Reject a literal corrupted BOM
+  (`\u00EF\u00BB\u00BF`, UTF-8 bytes `C3 AF C2 BB C2 BF`), duplicate BOMs,
+  or replacement characters (`U+FFFD`). Remove only a confirmed corrupted
+  prefix; do not globally strip non-ASCII characters or rewrite unrelated
+  files. This byte-level check does not require Unity compilation.
+- For every newly imported raster image, set the Unity Texture Importer's
+  **Default** platform Compression setting to `None`, with platform overrides
+  disabled, before finalizing the asset. Match this setting to existing enemy
+  sprite sheets; do not force per-platform compression overrides.
 - Avoid editing generated files under `Library/` or `Temp/`.
 - Avoid moving or renaming assets casually, because Unity `.meta` pairing
   matters.
+- Unity 6000.5 deprecates `UnityEngine.Object.GetInstanceID()`: use
+  `GetEntityId()` instead. When an `int` key is required, use
+  `GetEntityId().GetHashCode()` (the established project convention).
+- Unity 6000.5 deprecates `FindObjectsSortMode` and
+  `FindObjectsByType<T>(FindObjectsSortMode)`: use `FindObjectsByType<T>()`,
+  or `FindObjectsByType<T>(FindObjectsInactive)` only when inactive objects
+  are intentionally required.
+- Before finalizing C# changes, check that every added or retained private
+  field is read by runtime code. Remove obsolete serialized fields from their
+  scene or prefab YAML at the same time, so CS0414 warnings do not conceal
+  genuinely unused configuration.
 - Do not clean unrelated untracked files or recovery scenes unless asked.
 - If a task touches both code and Unity content, mention any scene or prefab
   follow-up that could not be validated from the terminal alone.

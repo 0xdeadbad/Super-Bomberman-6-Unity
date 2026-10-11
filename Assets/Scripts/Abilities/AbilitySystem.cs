@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -53,6 +53,27 @@ public class AbilitySystem : MonoBehaviour
         var ability = EnsureAbilityComponent(id, type);
         if (ability == null)
             return;
+
+        // PurpleLouie's separate ActionC ability is unaffected by item exclusivity.
+        if (id == LineBombAbility.AbilityId && IsEnabled(PowerGloveAbility.AbilityId))
+            Disable(PowerGloveAbility.AbilityId);
+        else if (id == PowerGloveAbility.AbilityId && IsEnabled(LineBombAbility.AbilityId))
+            Disable(LineBombAbility.AbilityId);
+
+        if (id == SearchBombAbility.AbilityId)
+        {
+            string[] bombTypes = { SearchBombAbility.AbilityId, MagnetBombAbility.AbilityId,
+                PierceBombAbility.AbilityId, ControlBombAbility.AbilityId,
+                PowerBombAbility.AbilityId, RubberBombAbility.AbilityId };
+            foreach (string bombType in bombTypes)
+                if (bombType != id)
+                    Disable(bombType);
+        }
+
+        else if (id == MagnetBombAbility.AbilityId || id == PierceBombAbility.AbilityId ||
+                 id == ControlBombAbility.AbilityId || id == PowerBombAbility.AbilityId ||
+                 id == RubberBombAbility.AbilityId)
+            Disable(SearchBombAbility.AbilityId);
 
         bool wasEnabled = ability.IsEnabled;
         ability.Enable();

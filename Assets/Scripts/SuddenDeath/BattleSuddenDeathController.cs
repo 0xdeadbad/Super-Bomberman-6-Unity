@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
@@ -172,7 +172,7 @@ public sealed class BattleSuddenDeathController : MonoBehaviour
     }
 
     public bool TryGetOverlappingThreatenedCell(
-        Collider2D[] playerColliders,
+        IReadOnlyList<Collider2D> playerColliders,
         Vector3Int ignoredCell,
         float maximumSeconds,
         out Vector3Int threatenedCell,
@@ -188,7 +188,7 @@ public sealed class BattleSuddenDeathController : MonoBehaviour
 
         bool found = false;
 
-        for (int i = 0; i < playerColliders.Length; i++)
+        for (int i = 0; i < playerColliders.Count; i++)
         {
             Collider2D playerCollider = playerColliders[i];
             if (playerCollider == null || !playerCollider.enabled || playerCollider.isTrigger)
@@ -249,6 +249,16 @@ public sealed class BattleSuddenDeathController : MonoBehaviour
 
         Vector2 movement = targetPosition - currentPosition;
         if (movement.sqrMagnitude <= 0.000001f)
+            return false;
+
+        // TilemapCollider2D represents every tile in its Tilemap with one
+        // collider.  The escape exception must therefore not treat a regular
+        // indestructible tile in that same Tilemap as the Sudden Death tile
+        // that caught the player.  A target inside another non-Sudden-Death
+        // tile remains blocked; only the active cell itself and an empty exit
+        // cell can be crossed while escaping the falling tile.
+        Vector3Int targetCell = indestructibleTilemap.WorldToCell(targetPosition);
+        if (indestructibleTilemap.HasTile(targetCell) && !IsActiveSuddenDeathCell(targetCell))
             return false;
 
         Vector3Int centerCell = indestructibleTilemap.WorldToCell(currentPosition);
