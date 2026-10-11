@@ -69,15 +69,13 @@ Queen Oyobee without recovering health. Transformation grants temporary external
 invulnerability and uses pause-aware timing. The red low-health tint is replaced
 by this phase in Hard/Hardcore; Normal and Boss Rush retain Venus behavior.
 
-Queen alternates two horizontal scepter sweeps followed by eight snowflakes orbiting
-for 1.1 seconds, and two vertical scepter lifts followed by a circular boomerang
-crown whose diameter joins the head and the closest player at launch. Snowflakes distribute targets among living
-players and steer at at most 35 degrees/second for their first 1.2 flight seconds.
-Snowflakes fly at 7.6 units/second (double the original Queen speed). Snow contact uses StunReceiver for 2 seconds, deals no direct damage and cannot
-refresh an active stun. A 1.5-second freeze protection follows thawing. Freeze preserves the current player sprites and tints them light blue; thaw, death and disable remove the tint. Transformation activates the same screen-anchored snowfall component used by Stage 3-5, lasting until the stage exits. Crown
-contact uses the existing health/mount path and can hit each player once per throw.
-Queen keeps Venus movement speed, remaining HP, explosions and ending sequence;
-death uses Queen's hurt sprite and crown with the shared death flashes.
+Queen no longer pauses or switches to a hurt pose on damage and receives three seconds of hit invulnerability. She moves 40% faster than Hard Venus (4.41 units/second). Her cycle uses one ice cast followed by two crown throws, with shorter preparation and recovery.
+
+Transformation lasts 2.2 pause-aware seconds: an icy pixel ritual ring, accelerating flashes, a cold tint pulse and the Queen music precede the reveal. A single light-blue circular wave expands from the Queen across the arena at 11 units/second, rasterized at 16 PPU with a bright crest, cyan body and trailing frost pixels. Contact freezes every living active player for 3.2 seconds, bypassing temporary health/stun protection for this encounter event only; health immunity itself is preserved. Existing planted bombs retain their normal fuses and explosion damage; freezing provides no explosion immunity.
+
+Each ordinary ice cast releases twelve snowflakes: six arena hazards and six pursuing shots. The hazards select six distinct ground destinations without indestructible/destructible tiles, depart at 0.11-second intervals after the 0.45-second orbit and move continuously at 1.6–2.25 units/second. Each stops only upon reaching its own destination and remains hazardous for seven seconds after arriving, fading during the last second. They are not consumed by player contact. The six pursuing shots start at evenly spaced angles around the Queen, launch toward distributed living-player targets at 4.5 units/second and steer at at most 20 degrees/second. If pursuit would require a turn greater than 55 degrees, they permanently continue straight. They expire after five flight seconds or after leaving the arena once they have entered its floor bounds. Ordinary snow freezes for two seconds and respects existing protection; 1.5 seconds of protection follows thawing. All projectile and boss positions snap to 1/16 units while retaining fractional logical movement, so reaching a tile never teleports the snowflake.
+
+The crown uses five waypoint patterns with mirrored variants (triangle, diamond, rectangle, crossing sweep and zigzag). Waypoints use clear arena floor and every path ends at the launch head position. The base route expands by sqrt(2) in both axes to double its nominal area, constrained to arena floor near boundaries. Flight duration is calculated from the original route at 19 units/second (minimum 0.7 seconds) and is preserved after expansion, increasing speed automatically. A 0.72-second preparation shows the exact path as a subtle gold line with dark pixel accents, rasterized at native 16 PPU with Point filtering. It stays visible through flight and is removed on return, defeat or disable. Collision sweeps prevent tunneling and each throw damages a player at most once using the existing health/mount path. Queen retains remaining HP and the existing ending sequence; Normal and Boss Rush do not use this phase.
 
 The supplied MP3 is assigned to the prefab and replaces the current music at the
 start of transformation. `Tools > Audio > Calibrate Queen Oyobee Music` measures
@@ -88,3 +86,7 @@ Transformation` imports and wires the phase while preserving other prefab values
 Rebuild Freezer Venus also configures it. Imported sheets use 16 PPU, Point,
 Default compression None and no platform overrides. The original Queen sheet is
 preserved; a separate working sheet removes its magenta/orange background.
+
+## Queen attack revision checks
+
+Nine encounter Edit Mode checks passed by direct NUnit-method invocation through Unity MCP, including distinct clear snow destinations, limited steering, expanded crown geometry and wave arrival. In Play Mode, the six ground snowflakes reached separate destinations at approximately 2.08–4.76 seconds without teleporting; every sampled collider/render position stayed on the 16 PPU grid. A crown retained the exact original flight duration after expansion. A six-player runtime fixture verified that the wave froze all six even with health immunity and freeze protection enabled, while preserving health immunity. The light-blue wave was visually inspected in the hall; a full multiplayer balance run was not performed.

@@ -18,12 +18,14 @@ public sealed class QueenOyobeeFreeze : MonoBehaviour
         health = GetComponent<CharacterHealth>();
     }
 
-    public bool TryFreeze()
+    public bool TryFreeze(float seconds = 2f, bool force = false)
     {
-        if (stun == null || !stun.CanReceiveStun || stun.IsStunned || protection > 0f) return false;
-        stun.Stun(2f, preserveCurrentSprites: true);
-        remaining = 2f;
-        protection = 3.5f;
+        if (stun == null && force) stun = gameObject.AddComponent<StunReceiver>();
+        if (stun == null || (!force && (!stun.CanReceiveStun || stun.IsStunned || protection > 0f))) return false;
+        if (force) stun.ForceStun(seconds, preserveCurrentSprites: true);
+        else stun.Stun(seconds, preserveCurrentSprites: true);
+        remaining = seconds;
+        protection = seconds + 1.5f;
         if (health != null)
         {
             health.SetPersistentTint(new Color(0.55f, 0.85f, 1f, 1f));

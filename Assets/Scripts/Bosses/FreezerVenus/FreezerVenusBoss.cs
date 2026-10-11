@@ -162,7 +162,7 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
         Vector3 direction = new(Mathf.Sign(delta.x), Mathf.Sign(delta.y), 0f);
         if (Mathf.Abs(delta.x) < 0.0001f) direction.x = 0f;
         if (Mathf.Abs(delta.y) < 0.0001f) direction.y = 0f;
-        Vector3 travel = direction.normalized * (moveSpeed * Time.fixedDeltaTime);
+        Vector3 travel = direction.normalized * (moveSpeed * (queen != null && queen.Active ? 1.4f : 1f) * Time.fixedDeltaTime);
         logicalGroundPosition += new Vector3(
             Mathf.Clamp(travel.x, -Mathf.Abs(delta.x), Mathf.Abs(delta.x)),
             Mathf.Clamp(travel.y, -Mathf.Abs(delta.y), Mathf.Abs(delta.y)), 0f);
@@ -458,6 +458,7 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
             StartCoroutine(TransformToQueen());
             return;
         }
+        if (queen != null && queen.Active) return;
         // Damage still counts, but casting owns the sprite until the attack finishes.
         if (!attacking)
         {
@@ -476,6 +477,7 @@ public sealed class FreezerVenusBoss : MonoBehaviour, IKillable
         hitbox.enabled = false;
         yield return queen.TransformRoutine();
         if (dead) yield break;
+        health.hitInvulnerableDuration = 3f;
         health.SetExternalInvulnerability(false);
         hitbox.enabled = true;
         transforming = false;

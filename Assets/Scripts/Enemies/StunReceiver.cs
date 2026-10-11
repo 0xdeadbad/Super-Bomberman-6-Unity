@@ -126,11 +126,18 @@ public partial class StunReceiver : MonoBehaviour
     public void Stun(float seconds) => Stun(seconds, preserveCurrentSprites: false);
 
     public void Stun(float seconds, bool preserveCurrentSprites)
+        => BeginStun(seconds, preserveCurrentSprites, force: false);
+
+    // Encounter-wide effects can require a freeze even during temporary stun protection.
+    public void ForceStun(float seconds, bool preserveCurrentSprites)
+        => BeginStun(seconds, preserveCurrentSprites, force: true);
+
+    private void BeginStun(float seconds, bool preserveCurrentSprites, bool force)
     {
-        if (!CanReceiveStun)
+        if (!force && !CanReceiveStun)
             return;
 
-        if (CompareTag("Player") && (isStunned || stunRoutine != null))
+        if (!force && CompareTag("Player") && (isStunned || stunRoutine != null))
             return;
 
         float dur = Mathf.Max(0.01f, seconds);

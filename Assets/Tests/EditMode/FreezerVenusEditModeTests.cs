@@ -12,6 +12,57 @@ public sealed class FreezerVenusEditModeTests
     private Tilemap walls;
     private FreezerVenusArena arena;
 
+    [Test]
+    public void Crown_PathUsesDistanceAndReturnsToOrigin()
+    {
+        Vector2[] path = { Vector2.zero, new Vector2(3f, 0f), new Vector2(3f, 4f), Vector2.zero };
+        Assert.AreEqual(Vector2.zero, QueenOyobeeProjectile.PathPoint(path, 0f));
+        Assert.AreEqual(new Vector2(3f, 3f), QueenOyobeeProjectile.PathPoint(path, 0.5f));
+        Assert.AreEqual(Vector2.zero, QueenOyobeeProjectile.PathPoint(path, 1f));
+    }
+
+    [Test]
+    public void GroundSnow_SelectsSixDistinctDestinationsWithoutPillars()
+    {
+        FillGround(-6, 6, -5, 5);
+        for (int y = -4; y <= 4; y += 2)
+            for (int x = -4; x <= 4; x += 2) walls.SetTile(new Vector3Int(x, y, 0), tile);
+        var cells = QueenOyobeeProjectile.GroundSnowDestinations(arena, Vector2.zero);
+        Assert.AreEqual(6, cells.Count);
+        Assert.AreEqual(6, new HashSet<Vector3Int>(cells).Count);
+        foreach (var cell in cells) Assert.IsTrue(arena.IsStaticWalkable(cell));
+    }
+
+    [Test]
+    public void Snow_ChaseRejectsTightTurnsAndReversals()
+    {
+        Assert.IsTrue(QueenOyobeeProjectile.CanSnowTurn(Vector2.right, new Vector2(1f, 0.5f)));
+        Assert.IsFalse(QueenOyobeeProjectile.CanSnowTurn(Vector2.right, Vector2.up));
+        Assert.IsFalse(QueenOyobeeProjectile.CanSnowTurn(Vector2.right, Vector2.left));
+        Assert.IsFalse(QueenOyobeeProjectile.CanSnowTurn(Vector2.right, Vector2.zero));
+    }
+
+    [Test]
+    public void Crown_ExpandedRouteCoversMoreFloorAndRetainsOriginalDuration()
+    {
+        FillGround(-12, 12, -12, 12);
+        Vector2[] path = { new Vector2(0.5f, 0.5f), new Vector2(3.5f, -2.5f), new Vector2(-2.5f, -2.5f), new Vector2(0.5f, 0.5f) };
+        float seconds = QueenOyobeeProjectile.CrownFlightSeconds(path);
+        Vector2[] expanded = QueenOyobeeProjectile.ExpandCrownPath(arena, path);
+        Assert.AreEqual(path[0], expanded[0]);
+        Assert.AreEqual(path[0], expanded[expanded.Length - 1]);
+        Assert.Greater(QueenOyobeeProjectile.CrownFlightSeconds(expanded), seconds);
+        Assert.Greater(Vector2.Distance(expanded[1], expanded[2]), Vector2.Distance(path[1], path[2]));
+    }
+
+    [Test]
+    public void IceWave_ReachesPlayersOnlyWhenItsVisibleFrontArrives()
+    {
+        Assert.IsFalse(QueenOyobeeIceWave.HasReached(Vector2.zero, new Vector2(3f, 4f), 4f));
+        Assert.IsTrue(QueenOyobeeIceWave.HasReached(Vector2.zero, new Vector2(3f, 4f), 5f));
+        Assert.IsTrue(QueenOyobeeIceWave.HasReached(Vector2.zero, new Vector2(3f, 4f), 6f));
+    }
+
     [SetUp]
     public void SetUp()
     {
